@@ -211,7 +211,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <div className="mt-4 text-center">
                     <p className="text-sm text-gray-600">
                       Don't have an account?{" "}
-                      <Link to="/register" className="text-brand-600 hover:underline">
+                      <Link to="/signup" className="text-brand-600 hover:underline">
                         Sign up
                       </Link>
                     </p>
