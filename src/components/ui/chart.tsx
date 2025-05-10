@@ -141,3 +141,82 @@ export function PieChart({ data, className }: ChartProps) {
     </div>
   );
 }
+
+// Add the missing chart components
+interface ChartContainerProps {
+  children: React.ReactNode;
+  config?: any;
+  className?: string;
+}
+
+export function ChartContainer({ children, config, className }: ChartContainerProps) {
+  return (
+    <div
+      className={className}
+      style={
+        {
+          "--color-users": config?.users?.theme?.light || "#8B5CF6",
+          "--color-loans": config?.loans?.theme?.light || "#16a34a",
+          "--color-transactions": config?.transactions?.theme?.light || "#4f46e5",
+          "--color-amount": config?.amount?.theme?.light || "#16a34a",
+        } as React.CSSProperties
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+export function ChartLegend({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center justify-center space-x-4">{children}</div>;
+}
+
+export function ChartLegendContent() {
+  return (
+    <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-1">
+        <div className="h-3 w-3 rounded-full bg-[var(--color-users)]" />
+        <span className="text-sm text-muted-foreground">Users</span>
+      </div>
+      <div className="flex items-center space-x-1">
+        <div className="h-3 w-3 rounded-full bg-[var(--color-loans)]" />
+        <span className="text-sm text-muted-foreground">Loans</span>
+      </div>
+      <div className="flex items-center space-x-1">
+        <div className="h-3 w-3 rounded-full bg-[var(--color-transactions)]" />
+        <span className="text-sm text-muted-foreground">Transactions</span>
+      </div>
+      <div className="flex items-center space-x-1">
+        <div className="h-3 w-3 rounded-full bg-[var(--color-amount)]" />
+        <span className="text-sm text-muted-foreground">Amount</span>
+      </div>
+    </div>
+  );
+}
+
+export function ChartTooltip({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+
+export function ChartTooltipContent({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-lg border bg-background p-2 shadow-md">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="font-medium">{label}</div>
+          {payload.map((item: any, index: number) => (
+            <div key={index} className="flex items-center justify-between gap-2">
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="font-medium">{item.name}</span>
+              <span>{item.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
