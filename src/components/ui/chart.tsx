@@ -1,135 +1,143 @@
 
 "use client";
 
-import { Bar, Line, Pie } from "react-chartjs-2";
+import React from "react";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
+  ResponsiveContainer,
+  LineChart as RechartsLineChart,
+  Line,
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-  PointElement,
-  LineElement,
-  ArcElement,
-} from "chart.js";
-import { ReactNode } from "react";
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  PointElement,
-  LineElement,
-  ArcElement
-);
-
-// Base options for charts
-const baseOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "top" as const,
-      labels: {
-        boxWidth: 10,
-        usePointStyle: true,
-      },
-    },
-  },
-};
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface ChartProps {
-  data: {
-    labels: string[];
-    datasets: any[];
-  };
-  options?: any;
-}
-
-// Adding the missing components that are referenced in other files
-interface ChartContainerProps {
-  config?: Record<string, any>;
-  children: ReactNode;
+  data: any;
   className?: string;
 }
 
-export function ChartContainer({ config, children, className }: ChartContainerProps) {
+export function LineChart({ data, className }: ChartProps) {
   return (
-    <div className={`w-full ${className || ''}`}>
-      {children}
+    <div className={className} style={{ width: "100%", height: "100%" }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsLineChart data={data?.datasets ? [] : data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          {data?.datasets ? (
+            data.datasets.map((dataset: any, index: number) => (
+              <Line
+                key={index}
+                type="monotone"
+                dataKey={dataset.label}
+                data={data.labels.map((label: string, i: number) => ({
+                  name: label,
+                  [dataset.label]: dataset.data[i],
+                }))}
+                stroke={dataset.borderColor}
+                fill={dataset.backgroundColor}
+                activeDot={{ r: 8 }}
+              />
+            ))
+          ) : (
+            <Line type="monotone" dataKey="value" stroke="#8884d8" activeDot={{ r: 8 }} />
+          )}
+        </RechartsLineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
-interface ChartLegendProps {
-  content?: ReactNode;
-}
+export function BarChart({ data, className }: ChartProps) {
+  if (!data) return null;
 
-export function ChartLegend({ content }: ChartLegendProps) {
-  return <div className="flex justify-center mt-2">{content}</div>;
-}
+  // If the data is in Chart.js format, convert it to a format that recharts can use
+  const formattedData = data.labels
+    ? data.labels.map((label: string, index: number) => {
+        const entry: Record<string, any> = { name: label };
+        data.datasets.forEach((dataset: any) => {
+          entry[dataset.label] = dataset.data[index];
+        });
+        return entry;
+      })
+    : data;
 
-export function ChartLegendContent() {
   return (
-    <div className="flex items-center gap-4 flex-wrap">
-      <div className="flex items-center">
-        <div className="w-3 h-3 rounded-full bg-primary mr-1"></div>
-        <span className="text-sm">Dataset 1</span>
-      </div>
-      <div className="flex items-center">
-        <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
-        <span className="text-sm">Dataset 2</span>
-      </div>
+    <div className={className} style={{ width: "100%", height: "100%" }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsBarChart data={formattedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          {data.datasets
+            ? data.datasets.map((dataset: any, index: number) => (
+                <Bar
+                  key={index}
+                  dataKey={dataset.label}
+                  fill={dataset.backgroundColor || `#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                />
+              ))
+            : Object.keys(formattedData[0] || {})
+                .filter((key) => key !== "name")
+                .map((key, index) => (
+                  <Bar
+                    key={index}
+                    dataKey={key}
+                    fill={`#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                  />
+                ))}
+        </RechartsBarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
-export function ChartTooltip({ content }: { content: ReactNode }) {
-  return <>{content}</>;
-}
+export function PieChart({ data, className }: ChartProps) {
+  if (!data || !data.datasets) return null;
 
-export function ChartTooltipContent() {
-  return <div className="bg-white p-2 rounded shadow text-xs"></div>;
-}
+  const dataset = data.datasets[0];
+  const formattedData = data.labels.map((label: string, index: number) => ({
+    name: label,
+    value: dataset.data[index],
+  }));
+  
+  const COLORS = dataset.backgroundColor || [
+    "#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#83a6ed",
+  ];
 
-export function BarChart({ data, options = {} }: ChartProps) {
   return (
-    <Bar
-      data={data}
-      options={{
-        ...baseOptions,
-        ...options,
-      }}
-    />
-  );
-}
-
-export function LineChart({ data, options = {} }: ChartProps) {
-  return (
-    <Line
-      data={data}
-      options={{
-        ...baseOptions,
-        ...options,
-      }}
-    />
-  );
-}
-
-export function PieChart({ data, options = {} }: ChartProps) {
-  return (
-    <Pie
-      data={data}
-      options={{
-        ...baseOptions,
-        ...options,
-      }}
-    />
+    <div className={className} style={{ width: "100%", height: "100%" }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsPieChart>
+          <Pie
+            data={formattedData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {formattedData.map((entry: any, index: number) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </RechartsPieChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
