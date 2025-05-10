@@ -1,10 +1,16 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/types/app.types';
 import { useToast } from '@/hooks/use-toast';
 
-type Notification = Tables['notifications']['Row'];
+// Mock type for notifications without Supabase
+type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  created_at: string;
+  read: boolean;
+  user_id: string;
+};
 
 export const useNotifications = (userId: string | undefined) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -18,21 +24,33 @@ export const useNotifications = (userId: string | undefined) => {
       return;
     }
 
+    // Mock fetching notifications
     const fetchNotifications = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching notifications:', error);
-        } else {
-          setNotifications(data || []);
-          setUnreadCount((data || []).filter(n => !n.read).length);
-        }
+        // In a real implementation, this would be an API call
+        // For now, we'll use mock data
+        const mockNotifications: Notification[] = [
+          {
+            id: '1',
+            title: 'Welcome',
+            message: 'Welcome to RI Medicare',
+            created_at: new Date().toISOString(),
+            read: false,
+            user_id: userId
+          },
+          {
+            id: '2',
+            title: 'Health Card',
+            message: 'Your health card application is approved',
+            created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+            read: true,
+            user_id: userId
+          }
+        ];
+        
+        setNotifications(mockNotifications);
+        setUnreadCount(mockNotifications.filter(n => !n.read).length);
       } catch (e) {
         console.error('Exception fetching notifications:', e);
       } finally {
@@ -42,67 +60,39 @@ export const useNotifications = (userId: string | undefined) => {
 
     fetchNotifications();
 
-    // Set up a real-time subscription for new notifications
-    let subscription;
-    
-    try {
-      subscription = supabase
-        .channel(`notifications_for_${userId}`) // Add unique channel name
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${userId}`
-          },
-          (payload) => {
-            const newNotification = payload.new as Notification;
-            setNotifications(prev => [newNotification, ...prev]);
-            setUnreadCount(prev => prev + 1);
-            
-            // Show a toast for the new notification
-            toast({
-              title: newNotification.title,
-              description: newNotification.message,
-            });
-          }
-        )
-        .subscribe((status, err) => {
-          // Log subscription status
-          if (err) {
-            console.error('Supabase real-time subscription error:', err);
-          } else {
-            console.log('Supabase real-time subscription status:', status);
-          }
+    // Mock real-time functionality with a timer
+    const notificationTimer = setInterval(() => {
+      const randomChance = Math.random();
+      // 10% chance of receiving a new notification every 30 seconds
+      if (randomChance < 0.1) {
+        const newNotification: Notification = {
+          id: `new-${Date.now()}`,
+          title: 'New Update',
+          message: 'You have a new system update',
+          created_at: new Date().toISOString(),
+          read: false,
+          user_id: userId
+        };
+        
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        
+        // Show a toast for the new notification
+        toast({
+          title: newNotification.title,
+          description: newNotification.message,
         });
-    } catch (e) {
-      console.error('Exception setting up real-time subscription:', e);
-    }
+      }
+    }, 30000); // Check every 30 seconds
 
     return () => {
-      if (subscription) {
-        try {
-          supabase.removeChannel(subscription);
-        } catch (e) {
-          console.error('Error unsubscribing from channel:', e);
-        }
-      }
+      clearInterval(notificationTimer);
     };
   }, [userId, toast]);
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId);
-
-      if (error) {
-        console.error('Error marking notification as read:', error);
-        return false;
-      }
-
+      // Update local state
       setNotifications(
         notifications.map(notification => 
           notification.id === notificationId ? { ...notification, read: true } : notification
@@ -120,17 +110,7 @@ export const useNotifications = (userId: string | undefined) => {
     if (!userId || notifications.filter(n => !n.read).length === 0) return true;
 
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', userId)
-        .eq('read', false);
-
-      if (error) {
-        console.error('Error marking all notifications as read:', error);
-        return false;
-      }
-
+      // Update local state
       setNotifications(
         notifications.map(notification => ({ ...notification, read: true }))
       );

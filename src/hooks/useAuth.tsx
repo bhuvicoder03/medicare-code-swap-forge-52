@@ -1,6 +1,5 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { supabase, cleanupAuthState } from '@/integrations/supabase/client';
 import { AuthState, AuthUser } from '@/types/app.types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,82 +34,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // First, set up the auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (session) {
-            // Defer profile fetching to avoid potential deadlocks
-            setTimeout(async () => {
-              const { user } = session;
-              
-              try {
-                // Get user profile data
-                const { data: profile, error } = await supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('id', user.id)
-                  .single();
-                
-                if (error) throw error;
-                
-                setAuthState({
-                  user: {
-                    id: user.id,
-                    email: user.email,
-                    role: profile?.role,
-                    firstName: profile?.first_name,
-                    lastName: profile?.last_name
-                  },
-                  loading: false,
-                  initialized: true
-                });
-              } catch (error) {
-                console.error('Error fetching user profile:', error);
-                toast({
-                  title: "Error",
-                  description: "Failed to load user profile",
-                  variant: "destructive"
-                });
-              }
-            }, 0);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setAuthState({
-            user: null,
-            loading: false,
-            initialized: true
-          });
-        }
-      }
-    );
-
-    // Then check for existing session
+    // Check localStorage for user data
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const savedUserData = localStorage.getItem('user');
         
-        if (error) throw error;
-        
-        if (session) {
-          const { user } = session;
-          
-          // Get user profile data
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-          
-          if (profileError) throw profileError;
-          
+        if (savedUserData) {
+          const user = JSON.parse(savedUserData);
           setAuthState({
             user: {
               id: user.id,
               email: user.email,
-              role: profile?.role,
-              firstName: profile?.first_name,
-              lastName: profile?.last_name
+              role: user.role,
+              firstName: user.firstName,
+              lastName: user.lastName
             },
             loading: false,
             initialized: true
@@ -133,40 +70,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
     
     initializeAuth();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [toast]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Clean up existing auth state first
-      cleanupAuthState();
+      // This is a mock implementation
+      // In a real app, you would validate against a server
       
-      // Attempt global sign out to ensure clean state
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        // Continue even if this fails
-        console.error('Error during pre-login signout:', err);
-      }
+      // Mock user data for demonstration
+      const mockUsers = [
+        {
+          id: 'user-1',
+          email: 'patient@example.com',
+          password: 'password123',
+          firstName: 'John',
+          lastName: 'Doe',
+          role: 'patient'
+        },
+        {
+          id: 'user-2',
+          email: 'admin@example.com',
+          password: 'password123',
+          firstName: 'Admin',
+          lastName: 'User',
+          role: 'admin'
+        },
+        {
+          id: 'user-3',
+          email: 'hospital@example.com',
+          password: 'password123',
+          firstName: 'Hospital',
+          lastName: 'Manager',
+          role: 'hospital'
+        }
+      ];
       
-      // Now sign in
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      // Find matching user
+      const user = mockUsers.find(u => u.email === email && u.password === password);
       
-      if (error) {
+      if (!user) {
         toast({
           title: "Login Failed",
-          description: error.message,
+          description: "Invalid email or password",
           variant: "destructive"
         });
+        return { error: { message: "Invalid email or password" }, data: null };
       }
       
-      return { data, error };
+      // Save user to localStorage
+      const userData = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName
+      };
+      
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Update auth state
+      setAuthState({
+        user: userData,
+        loading: false,
+        initialized: true
+      });
+      
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${user.firstName}!`,
+      });
+      
+      return { error: null, data: { user: userData } };
     } catch (error: any) {
       toast({
         title: "Login Error",
@@ -188,35 +162,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
-      // Clean up existing auth state first
-      cleanupAuthState();
+      // In a real app, you would send this data to a server
+      // For demo purposes, we'll just simulate a successful registration
       
-      const { data, error } = await supabase.auth.signUp({
+      // Generate a mock user ID
+      const userId = `user-${Date.now()}`;
+      
+      const userData = {
+        id: userId,
         email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            role
-          }
-        }
+        role,
+        firstName,
+        lastName
+      };
+      
+      // In a real app, we would store this on the server
+      // For demo, let's just save to localStorage
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Update auth state
+      setAuthState({
+        user: userData,
+        loading: false,
+        initialized: true
       });
       
-      if (error) {
-        toast({
-          title: "Registration Failed",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Registration Successful",
-          description: "Please check your email to confirm your account",
-        });
-      }
+      toast({
+        title: "Registration Successful",
+        description: `Welcome, ${firstName}!`,
+      });
       
-      return { data, error };
+      return { data: { user: userData }, error: null };
     } catch (error: any) {
       toast({
         title: "Registration Error",
@@ -229,17 +205,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     try {
-      // Clean up auth state first
-      cleanupAuthState();
-      
-      // Attempt global sign out
-      await supabase.auth.signOut({ scope: 'global' });
+      // Remove user data from localStorage
+      localStorage.removeItem('user');
       
       // Reset auth state
       setAuthState({
         user: null,
         loading: false,
         initialized: true
+      });
+      
+      toast({
+        title: "Signed Out",
+        description: "You have successfully signed out",
       });
       
       // Force page reload for a clean state
@@ -275,22 +253,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          first_name: userData.firstName,
-          last_name: userData.lastName
-        })
-        .eq('id', authState.user.id);
+      // Update local storage with new profile data
+      const updatedUser = {
+        ...authState.user,
+        ...userData
+      };
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
 
-      if (error) throw error;
-
+      // Update state
       setAuthState({
         ...authState,
-        user: {
-          ...authState.user,
-          ...userData
-        }
+        user: updatedUser
       });
       
       toast({
