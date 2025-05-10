@@ -1,10 +1,10 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { StrictMode } from "react";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import ApplyLoan from "./pages/ApplyLoan";
 import OurCards from "./pages/OurCards";
@@ -44,10 +44,18 @@ const App = () => (
             <Route path="/our-cards" element={<OurCards />} />
             <Route path="/about-us" element={<AboutUs />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/admin-dashboard"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/hospital-registration" element={<HospitalRegistration />} />
             <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
             <Route path="/patient-dashboard" element={<PatientDashboard />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/sales-dashboard" element={<SalesTeamDashboard />} />
             <Route path="/crm-dashboard" element={<CrmDashboard />} />
             <Route path="/agent-dashboard" element={<AgentDashboard />} />

@@ -1,7 +1,7 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { AuthState, AuthUser, UserRole } from '@/types/app.types';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "@/components/ui/use-toast";
+import { apiRequest } from "@/services/api";
 
 const initialState: AuthState = {
   user: null,
@@ -19,19 +19,18 @@ const AuthContext = createContext<{
     error: any | null;
     data: any | null;
   }>;
-  signOut: () => Promise<void>;
+  signOut: () => void;
   updateProfile: (userData: Partial<AuthUser>) => Promise<void>;
 }>({
   authState: initialState,
   signIn: async () => ({ error: null, data: null }),
   signUp: async () => ({ error: null, data: null }),
-  signOut: async () => {},
+  signOut: () => {},
   updateProfile: async () => {}
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>(initialState);
-  const { toast } = useToast();
 
   useEffect(() => {
     // Check localStorage for user data
@@ -74,80 +73,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      // This is a mock implementation
-      // In a real app, you would validate against a server
-      
-      // Mock user data for demonstration
-      const mockUsers = [
-        {
-          id: 'user-1',
-          email: 'patient@example.com',
-          password: 'password123',
-          firstName: 'John',
-          lastName: 'Doe',
-          role: 'patient' as UserRole
-        },
-        {
-          id: 'user-2',
-          email: 'admin@example.com',
-          password: 'password123',
-          firstName: 'Admin',
-          lastName: 'User',
-          role: 'admin' as UserRole
-        },
-        {
-          id: 'user-3',
-          email: 'hospital@example.com',
-          password: 'password123',
-          firstName: 'Hospital',
-          lastName: 'Manager',
-          role: 'hospital' as UserRole
+      const data = await apiRequest('/auth', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+
+      const userData = await apiRequest('/users/me', {
+        headers: {
+          'x-auth-token': data.token
         }
-      ];
-      
-      // Find matching user
-      const user = mockUsers.find(u => u.email === email && u.password === password);
-      
-      if (!user) {
-        toast({
-          title: "Login Failed",
-          description: "Invalid email or password",
-          variant: "destructive"
-        });
-        return { error: { message: "Invalid email or password" }, data: null };
-      }
-      
-      // Save user to localStorage
-      const userData = {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName
-      };
-      
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Update auth state
+      });
+
+      // Store token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify({
+        id: userData._id,
+        email: userData.email,
+        role: userData.role,
+        firstName: userData.first_name,
+        lastName: userData.last_name
+      }));
+
       setAuthState({
-        user: userData,
+        user: {
+          id: userData._id,
+          email: userData.email,
+          role: userData.role,
+          firstName: userData.first_name,
+          lastName: userData.last_name
+        },
         loading: false,
         initialized: true
       });
-      
-      toast({
-        title: "Login Successful",
-        description: `Welcome back, ${user.firstName}!`,
-      });
-      
-      return { error: null, data: { user: userData } };
+
+      return { data, error: null };
     } catch (error: any) {
       toast({
-        title: "Login Error",
-        description: error.message || "An unexpected error occurred",
+        title: "Login Failed",
+        description: error.message || "Invalid credentials",
         variant: "destructive"
       });
-      return { data: null, error };
+      return { error, data: null };
     }
   };
 
@@ -203,43 +169,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signOut = async () => {
-    try {
-      // Remove user data from localStorage
-      localStorage.removeItem('user');
-      
-      // Reset auth state
-      setAuthState({
-        user: null,
-        loading: false,
-        initialized: true
-      });
-      
-      toast({
-        title: "Signed Out",
-        description: "You have successfully signed out",
-      });
-      
-      // Force page reload for a clean state
-      window.location.href = '/';
-    } catch (error: any) {
-      console.error('Error signing out:', error);
-      toast({
-        title: "Error Signing Out",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive"
-      });
-      
-      // Even if there's an error, clean up the local state
-      setAuthState({
-        user: null,
-        loading: false,
-        initialized: true
-      });
-      
-      // Force reload anyway
-      window.location.href = '/';
-    }
+  const signOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setAuthState({
+      user: null,
+      loading: false,
+      initialized: true
+    });
   };
 
   const updateProfile = async (userData: Partial<AuthUser>) => {
