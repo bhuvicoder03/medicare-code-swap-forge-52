@@ -22,7 +22,7 @@ import SupportDashboard from "./pages/SupportDashboard";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsAndConditions from "./pages/legal/TermsAndConditions";
 import Sitemap from "./pages/Sitemap";
-
+import Signup from "./pages/Signup";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +37,7 @@ const App = () => (
             <Route path="/our-cards" element={<OurCards />} />
             <Route path="/about-us" element={<AboutUs />} />
             <Route path="/login" element={<Login />} />
+             <Route path="/signup" element={<Signup />} />
             <Route
               path="/admin-dashboard"
               element={
