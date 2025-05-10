@@ -1,6 +1,6 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { AuthState, AuthUser } from '@/types/app.types';
+import { AuthState, AuthUser, UserRole } from '@/types/app.types';
 import { useToast } from '@/hooks/use-toast';
 
 const initialState: AuthState = {
@@ -15,7 +15,7 @@ const AuthContext = createContext<{
     error: any | null;
     data: any | null;
   }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string, role?: string) => Promise<{
+  signUp: (email: string, password: string, firstName: string, lastName: string, role?: UserRole) => Promise<{
     error: any | null;
     data: any | null;
   }>;
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             user: {
               id: user.id,
               email: user.email,
-              role: user.role,
+              role: user.role as UserRole, // Type assertion to ensure role is UserRole
               firstName: user.firstName,
               lastName: user.lastName
             },
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           password: 'password123',
           firstName: 'John',
           lastName: 'Doe',
-          role: 'patient'
+          role: 'patient' as UserRole
         },
         {
           id: 'user-2',
@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           password: 'password123',
           firstName: 'Admin',
           lastName: 'User',
-          role: 'admin'
+          role: 'admin' as UserRole
         },
         {
           id: 'user-3',
@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           password: 'password123',
           firstName: 'Hospital',
           lastName: 'Manager',
-          role: 'hospital'
+          role: 'hospital' as UserRole
         }
       ];
       
@@ -151,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string, role = 'patient') => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, role: UserRole = 'patient') => {
     if (password.length < 8) {
       toast({
         title: "Password Too Short",
