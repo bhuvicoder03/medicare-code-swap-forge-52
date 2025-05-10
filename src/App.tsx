@@ -23,13 +23,6 @@ import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsAndConditions from "./pages/legal/TermsAndConditions";
 import Sitemap from "./pages/Sitemap";
 
-// Service Pages
-import FinancingService from "./pages/services/FinancingService";
-import PharmaService from "./pages/services/PharmaService";
-import AmbulanceService from "./pages/services/AmbulanceService";
-import StoresService from "./pages/services/StoresService";
-import PathologyService from "./pages/services/PathologyService";
-import PharmacyService from "./pages/services/PharmacyService";
 
 const queryClient = new QueryClient();
 
@@ -63,13 +56,6 @@ const App = () => (
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             
-            {/* Service Pages */}
-            <Route path="/services/financing" element={<FinancingService />} />
-            <Route path="/services/pharma" element={<PharmaService />} />
-            <Route path="/services/ambulance" element={<AmbulanceService />} />
-            <Route path="/services/stores" element={<StoresService />} />
-            <Route path="/services/pathology" element={<PathologyService />} />
-            <Route path="/services/pharmacy" element={<PharmacyService />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
