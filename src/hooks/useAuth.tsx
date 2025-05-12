@@ -34,15 +34,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>(initialState);
 
   useEffect(() => {
+    console.log('Initializing auth');
     // Check localStorage for user data
     const initializeAuth = async () => {
       try {
         const token = localStorage.getItem('token');
+        console.log('Checking token:', token ? 'Token exists' : 'No token');
         
         if (token) {
           try {
             // Verify token validity by fetching user data
-            const userData = await apiRequest('/users/me');
+            console.log('Fetching user data with token');
+            const userData = await apiRequest('/auth');
+            console.log('User data received:', userData);
             
             setAuthState({
               user: {
@@ -56,9 +60,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               initialized: true
             });
           } catch (error) {
+            console.error('Error validating token:', error);
             // Token invalid, clear storage
             localStorage.removeItem('token');
-            localStorage.removeItem('user');
             
             setAuthState({
               user: null,
@@ -67,6 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
         } else {
+          console.log('No token found, setting unauthenticated state');
           setAuthState({
             user: null,
             loading: false,
@@ -88,18 +93,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Signing in with:', email);
       const data = await apiRequest('/auth', {
         method: 'POST',
         body: JSON.stringify({ email, password })
       });
-
+      
+      console.log('Sign in successful, received token:', data.token ? 'Token received' : 'No token');
       localStorage.setItem('token', data.token);
       
       try {
         // Fetch user data
-        const userData = await apiRequest('/users/me');
+        console.log('Fetching user data after login');
+        const userData = await apiRequest('/auth');
+        console.log('User data after login:', userData);
         
-        // Store user data
+        // Store user data in state
         const user = {
           id: userData._id,
           email: userData.email,
@@ -108,8 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           lastName: userData.lastName
         };
         
-        localStorage.setItem('user', JSON.stringify(user));
-
+        console.log('Setting auth state with user:', user);
         setAuthState({
           user,
           loading: false,
@@ -117,30 +125,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return { data, error: null };
-      } catch (error) {
+      } catch (error: any) {
+        console.error('Error fetching user data after login:', error);
         return { error, data: null };
       }
     } catch (error: any) {
-      toast({
-        title: "Login Failed",
-        description: error.message || "Invalid credentials",
-        variant: "destructive"
-      });
+      console.error('Login error:', error);
       return { error, data: null };
     }
   };
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string, role: UserRole = 'patient') => {
     if (password.length < 6) {
-      toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive"
-      });
       return { data: null, error: { message: "Password must be at least 6 characters long" } };
     }
     
     try {
+      console.log('Registering new user:', { email, firstName, lastName, role });
       // Register new user
       const data = await apiRequest('/users', {
         method: 'POST',
@@ -153,10 +154,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         })
       });
       
+      console.log('Registration successful, received token:', data.token ? 'Token received' : 'No token');
       localStorage.setItem('token', data.token);
       
       // Fetch user details to get correct format
-      const userData = await apiRequest('/users/me');
+      console.log('Fetching user data after registration');
+      const userData = await apiRequest('/auth');
+      console.log('User data after registration:', userData);
       
       const user = {
         id: userData._id,
@@ -166,56 +170,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastName: userData.lastName
       };
       
-      localStorage.setItem('user', JSON.stringify(user));
-      
+      console.log('Setting auth state with user:', user);
       setAuthState({
         user,
         loading: false,
         initialized: true
       });
       
-      toast({
-        title: "Registration Successful",
-        description: `Welcome, ${firstName}!`,
-      });
-      
       return { data: { user }, error: null };
     } catch (error: any) {
-      toast({
-        title: "Registration Error",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive"
-      });
+      console.error('Registration error:', error);
       return { data: null, error };
     }
   };
 
   const signOut = () => {
+    console.log('Signing out');
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    
     setAuthState({
       user: null,
       loading: false,
       initialized: true
     });
-    
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out",
-    });
   };
 
   const updateProfile = async (userData: Partial<AuthUser>) => {
     if (!authState.user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to update your profile",
-        variant: "destructive"
-      });
+      console.error('Cannot update profile: user not authenticated');
       return;
     }
 
     try {
+      console.log('Updating profile:', userData);
       // Update profile on server
       const updatedUserData = await apiRequest('/users/me', {
         method: 'PUT',
@@ -225,32 +212,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: userData.email
         })
       });
+      console.log('Profile update successful:', updatedUserData);
       
-      // Update local storage with new profile data
+      // Update state
       const updatedUser = {
         ...authState.user,
         ...userData
       };
       
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-
-      // Update state
+      console.log('Setting auth state with updated user:', updatedUser);
       setAuthState({
         ...authState,
         user: updatedUser
       });
-      
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated",
-      });
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update profile",
-        variant: "destructive"
-      });
     }
   };
 
