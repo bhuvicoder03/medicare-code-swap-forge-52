@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
@@ -10,16 +11,11 @@ const User = require('../models/User');
 // @desc    Get all hospitals
 // @access  Private
 router.get('/', auth, async (req, res) => {
-  console.log('=== GET /api/hospitals ===');
   try {
-    console.log('Fetching all hospitals...');
     const hospitals = await Hospital.find().sort({ date: -1 });
-    console.log(`Retrieved ${hospitals.length} hospitals`);
-    console.log('=== End GET /api/hospitals ===');
     res.json(hospitals);
   } catch (err) {
-    console.error('Error fetching hospitals:', err.message);
-    console.log('=== End GET /api/hospitals with error ===');
+    console.error(err.message);
     res.status(500).send('Server Error');
   }
 });

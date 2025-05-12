@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
@@ -9,16 +10,11 @@ const Loan = require('../models/Loan');
 // @desc    Get all loans for a user
 // @access  Private
 router.get('/', auth, async (req, res) => {
-  console.log('=== GET /api/loans ===');
   try {
-    console.log(`Fetching loans for user: ${req.user.id}`);
     const loans = await Loan.find({ user: req.user.id }).sort({ applicationDate: -1 });
-    console.log(`Retrieved ${loans.length} loans`);
-    console.log('=== End GET /api/loans ===');
     res.json(loans);
   } catch (err) {
-    console.error('Error fetching loans:', err.message);
-    console.log('=== End GET /api/loans with error ===');
+    console.error(err.message);
     res.status(500).send('Server Error');
   }
 });

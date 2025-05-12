@@ -45,7 +45,6 @@ const Login = () => {
   useEffect(() => {
     if (authState.initialized && authState.user) {
       const redirectPath = `/${authState.user.role}-dashboard`;
-      console.log('User already authenticated, redirecting to:', redirectPath);
       navigate(redirectPath);
     }
   }, [authState.initialized, authState.user, navigate]);
@@ -85,8 +84,6 @@ const Login = () => {
     
     try {
       console.log('Attempting sign in with:', formData.email);
-      console.log('Form data:', { email: formData.email, password: '***' });
-      
       const { error, data } = await signIn(formData.email, formData.password);
       
       if (error) {
@@ -128,8 +125,6 @@ const Login = () => {
     
     try {
       console.log('Attempting demo login as:', type);
-      console.log('Using demo credentials:', { email: credentials.email, password: '***' });
-      
       const { error } = await signIn(credentials.email, credentials.password);
       
       if (error) {
