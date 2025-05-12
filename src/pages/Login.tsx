@@ -1,5 +1,7 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -20,6 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { authState, signIn } = useAuth();
   const [loaded, setLoaded] = useState(true);
   const [loginType, setLoginType] = useState<'hospital' | 'patient' | 'admin' | 'sales' | 'crm'>('patient');
   const [formData, setFormData] = useState({
@@ -28,7 +31,6 @@ const Login = () => {
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Demo credentials
   const demoCredentials = {
@@ -40,10 +42,12 @@ const Login = () => {
   };
 
   // Redirect if already authenticated
-  if (isAuthenticated) {
-    const redirectPath = `/${loginType}-dashboard`;
-    return <Navigate to={redirectPath} replace />;
-  }
+  useEffect(() => {
+    if (authState.initialized && authState.user) {
+      const redirectPath = `/${authState.user.role}-dashboard`;
+      navigate(redirectPath, { replace: true });
+    }
+  }, [authState, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -84,15 +88,17 @@ const Login = () => {
     setError(null);
     
     try {
-      const credentials = demoCredentials[loginType];
-      if (formData.email === credentials.email && formData.password === credentials.password) {
-        setIsAuthenticated(true);
+      const { error, data } = await signIn(formData.email, formData.password);
+      
+      if (error) {
+        setError(error.message || 'Invalid email or password');
+      } else {
         toast({
           title: "Login Successful",
           description: `Welcome back!`,
         });
-      } else {
-        setError('Invalid email or password');
+        
+        // Navigation will happen automatically through the useEffect
       }
     } catch (err: any) {
       setError('An unexpected error occurred');
@@ -101,15 +107,41 @@ const Login = () => {
     }
   };
 
-  const handleDemoLogin = (type: 'hospital' | 'patient' | 'admin' | 'sales' | 'crm') => {
+  const handleDemoLogin = async (type: 'hospital' | 'patient' | 'admin' | 'sales' | 'crm') => {
     setLoginType(type);
-    setFormData(demoCredentials[type]);
-    setIsAuthenticated(true);
-    toast({
-      title: "Demo Login Successful",
-      description: `Logged in as ${type} demo user`,
-    });
+    setIsSubmitting(true);
+    
+    const credentials = demoCredentials[type];
+    setFormData(credentials);
+    
+    try {
+      const { error } = await signIn(credentials.email, credentials.password);
+      
+      if (error) {
+        setError('Demo login failed. Please try again.');
+        toast({
+          title: "Demo Login Failed",
+          description: error.message || 'Please try again',
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Demo Login Successful",
+          description: `Logged in as ${type} demo user`,
+        });
+        // Navigation will happen automatically through the useEffect
+      }
+    } catch (err: any) {
+      setError('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // If loading, show loading indicator
+  if (authState.loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -221,6 +253,7 @@ const Login = () => {
                       variant="outline"
                       className="w-full"
                       onClick={() => handleDemoLogin(loginType)}
+                      disabled={isSubmitting}
                     >
                       Demo Login as {loginType}
                     </Button>
@@ -229,7 +262,7 @@ const Login = () => {
                   <div className="mt-4 text-center">
                     <p className="text-sm text-gray-600">
                       Don't have an account?{" "}
-                      <Link to="/register" className="text-brand-600 hover:underline">
+                      <Link to="/signup" className="text-brand-600 hover:underline">
                         Sign up
                       </Link>
                     </p>

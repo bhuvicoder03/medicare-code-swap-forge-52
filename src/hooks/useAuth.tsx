@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { AuthState, AuthUser, UserRole } from '@/types/app.types';
 import { toast } from "@/components/ui/use-toast";
@@ -36,21 +37,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Check localStorage for user data
     const initializeAuth = async () => {
       try {
-        const savedUserData = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
         
-        if (savedUserData) {
-          const user = JSON.parse(savedUserData);
-          setAuthState({
-            user: {
-              id: user.id,
-              email: user.email,
-              role: user.role as UserRole, // Type assertion to ensure role is UserRole
-              firstName: user.firstName,
-              lastName: user.lastName
-            },
-            loading: false,
-            initialized: true
-          });
+        if (token) {
+          try {
+            // Verify token validity by fetching user data
+            const userData = await apiRequest('/users/me');
+            
+            setAuthState({
+              user: {
+                id: userData._id,
+                email: userData.email,
+                role: userData.role as UserRole,
+                firstName: userData.firstName,
+                lastName: userData.lastName
+              },
+              loading: false,
+              initialized: true
+            });
+          } catch (error) {
+            // Token invalid, clear storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            setAuthState({
+              user: null,
+              loading: false,
+              initialized: true
+            });
+          }
         } else {
           setAuthState({
             user: null,
@@ -78,35 +93,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ email, password })
       });
 
-      const userData = await apiRequest('/users/me', {
-        headers: {
-          'x-auth-token': data.token
-        }
-      });
-
-      // Store token and user data
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify({
-        id: userData._id,
-        email: userData.email,
-        role: userData.role,
-        firstName: userData.first_name,
-        lastName: userData.last_name
-      }));
-
-      setAuthState({
-        user: {
+      
+      try {
+        // Fetch user data
+        const userData = await apiRequest('/users/me');
+        
+        // Store user data
+        const user = {
           id: userData._id,
           email: userData.email,
-          role: userData.role,
-          firstName: userData.first_name,
-          lastName: userData.last_name
-        },
-        loading: false,
-        initialized: true
-      });
+          role: userData.role as UserRole,
+          firstName: userData.firstName,
+          lastName: userData.lastName
+        };
+        
+        localStorage.setItem('user', JSON.stringify(user));
 
-      return { data, error: null };
+        setAuthState({
+          user,
+          loading: false,
+          initialized: true
+        });
+
+        return { data, error: null };
+      } catch (error) {
+        return { error, data: null };
+      }
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -118,37 +131,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string, role: UserRole = 'patient') => {
-    if (password.length < 8) {
+    if (password.length < 6) {
       toast({
         title: "Password Too Short",
-        description: "Password must be at least 8 characters long",
+        description: "Password must be at least 6 characters long",
         variant: "destructive"
       });
-      return { data: null, error: { message: "Password must be at least 8 characters long" } };
+      return { data: null, error: { message: "Password must be at least 6 characters long" } };
     }
     
     try {
-      // In a real app, you would send this data to a server
-      // For demo purposes, we'll just simulate a successful registration
+      // Register new user
+      const data = await apiRequest('/users', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          firstName, 
+          lastName, 
+          role 
+        })
+      });
       
-      // Generate a mock user ID
-      const userId = `user-${Date.now()}`;
+      localStorage.setItem('token', data.token);
       
-      const userData = {
-        id: userId,
-        email,
-        role,
-        firstName,
-        lastName
+      // Fetch user details to get correct format
+      const userData = await apiRequest('/users/me');
+      
+      const user = {
+        id: userData._id,
+        email: userData.email,
+        role: userData.role as UserRole,
+        firstName: userData.firstName,
+        lastName: userData.lastName
       };
       
-      // In a real app, we would store this on the server
-      // For demo, let's just save to localStorage
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(user));
       
-      // Update auth state
       setAuthState({
-        user: userData,
+        user,
         loading: false,
         initialized: true
       });
@@ -158,7 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: `Welcome, ${firstName}!`,
       });
       
-      return { data: { user: userData }, error: null };
+      return { data: { user }, error: null };
     } catch (error: any) {
       toast({
         title: "Registration Error",
@@ -177,6 +198,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading: false,
       initialized: true
     });
+    
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out",
+    });
   };
 
   const updateProfile = async (userData: Partial<AuthUser>) => {
@@ -190,6 +216,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      // Update profile on server
+      const updatedUserData = await apiRequest('/users/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email
+        })
+      });
+      
       // Update local storage with new profile data
       const updatedUser = {
         ...authState.user,

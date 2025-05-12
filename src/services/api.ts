@@ -1,3 +1,5 @@
+
+// Add any custom application types here
 const API_URL = 'http://localhost:5000/api';
 
 export const getAuthToken = () => localStorage.getItem('token');
@@ -18,7 +20,7 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || 'API request failed');
+    throw new Error(errorData.msg || errorData.message || 'API request failed');
   }
 
   return response.json();

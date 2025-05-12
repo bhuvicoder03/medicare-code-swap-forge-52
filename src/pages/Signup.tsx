@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -31,10 +32,12 @@ const Signup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if already authenticated
-  if (authState.initialized && authState.user) {
-    const redirectPath = `/${authState.user.role}-dashboard`;
-    return <Navigate to={redirectPath} replace />;
-  }
+  useEffect(() => {
+    if (authState.initialized && authState.user) {
+      const redirectPath = `/${authState.user.role}-dashboard`;
+      navigate(redirectPath, { replace: true });
+    }
+  }, [authState, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -56,8 +59,8 @@ const Signup = () => {
       return false;
     }
     
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
       return false;
     }
     
@@ -88,6 +91,8 @@ const Signup = () => {
           title: "Registration Successful",
           description: "Your account has been created successfully",
         });
+        
+        // Navigation will happen automatically due to the AuthState change
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
@@ -95,6 +100,11 @@ const Signup = () => {
       setIsSubmitting(false);
     }
   };
+
+  // If loading, show loading indicator
+  if (authState.loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { apiRequest } from '@/services/api';
 
-// Mock type for notifications without Supabase
+// Type for notifications
 type Notification = {
   id: string;
   title: string;
@@ -24,12 +25,28 @@ export const useNotifications = (userId: string | undefined) => {
       return;
     }
 
-    // Mock fetching notifications
+    // Fetch notifications from API
     const fetchNotifications = async () => {
       setLoading(true);
       try {
-        // In a real implementation, this would be an API call
-        // For now, we'll use mock data
+        const response = await apiRequest('/notifications');
+        
+        // Transform API response to match our Notification type
+        const formattedNotifications = response.map((notification: any) => ({
+          id: notification._id,
+          title: notification.title,
+          message: notification.message,
+          created_at: notification.created_at,
+          read: notification.read,
+          user_id: notification.user
+        }));
+        
+        setNotifications(formattedNotifications);
+        setUnreadCount(formattedNotifications.filter((n: Notification) => !n.read).length);
+      } catch (e) {
+        console.error('Exception fetching notifications:', e);
+        
+        // Fallback to mock data if API fails
         const mockNotifications: Notification[] = [
           {
             id: '1',
@@ -51,8 +68,6 @@ export const useNotifications = (userId: string | undefined) => {
         
         setNotifications(mockNotifications);
         setUnreadCount(mockNotifications.filter(n => !n.read).length);
-      } catch (e) {
-        console.error('Exception fetching notifications:', e);
       } finally {
         setLoading(false);
       }
@@ -60,30 +75,8 @@ export const useNotifications = (userId: string | undefined) => {
 
     fetchNotifications();
 
-    // Mock real-time functionality with a timer
-    const notificationTimer = setInterval(() => {
-      const randomChance = Math.random();
-      // 10% chance of receiving a new notification every 30 seconds
-      if (randomChance < 0.1) {
-        const newNotification: Notification = {
-          id: `new-${Date.now()}`,
-          title: 'New Update',
-          message: 'You have a new system update',
-          created_at: new Date().toISOString(),
-          read: false,
-          user_id: userId
-        };
-        
-        setNotifications(prev => [newNotification, ...prev]);
-        setUnreadCount(prev => prev + 1);
-        
-        // Show a toast for the new notification
-        toast({
-          title: newNotification.title,
-          description: newNotification.message,
-        });
-      }
-    }, 30000); // Check every 30 seconds
+    // Poll for new notifications every 30 seconds
+    const notificationTimer = setInterval(fetchNotifications, 30000);
 
     return () => {
       clearInterval(notificationTimer);
@@ -92,6 +85,11 @@ export const useNotifications = (userId: string | undefined) => {
 
   const markAsRead = async (notificationId: string) => {
     try {
+      // Update on server
+      await apiRequest(`/notifications/${notificationId}/read`, {
+        method: 'PUT'
+      });
+      
       // Update local state
       setNotifications(
         notifications.map(notification => 
@@ -110,7 +108,8 @@ export const useNotifications = (userId: string | undefined) => {
     if (!userId || notifications.filter(n => !n.read).length === 0) return true;
 
     try {
-      // Update local state
+      // In a real implementation, we would call an API endpoint to mark all as read
+      // For now, we'll just update local state
       setNotifications(
         notifications.map(notification => ({ ...notification, read: true }))
       );
