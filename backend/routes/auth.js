@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
@@ -11,16 +10,21 @@ const User = require('../models/User');
 // @desc    Get logged in user
 // @access  Private
 router.get('/', auth, async (req, res) => {
+  console.log('=== GET /api/auth ===');
+  console.log('Authenticating request...');
   try {
-    console.log('Getting authenticated user, id:', req.user.id);
+    console.log(`Fetching user details for ID: ${req.user.id}`);
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
+      console.log(`User not found for ID: ${req.user.id}`);
       return res.status(404).json({ msg: 'User not found' });
     }
-    console.log('User found:', user.email);
+    console.log(`Successfully retrieved user: ${user.email}`);
+    console.log('=== End GET /api/auth ===');
     res.json(user);
   } catch (err) {
-    console.error('Error fetching user:', err.message);
+    console.error('Authentication error:', err.message);
+    console.log('=== End GET /api/auth with error ===');
     res.status(500).json({ msg: 'Server Error' });
   }
 });
@@ -35,31 +39,39 @@ router.post(
     check('password', 'Password is required').exists()
   ],
   async (req, res) => {
-    console.log('Login attempt for:', req.body.email);
+    console.log('=== POST /api/auth ===');
+    console.log(`Login attempt initiated for: ${req.body.email}`);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
+      console.log('Validation failed:', errors.array());
+      console.log('=== End POST /api/auth with validation error ===');
       return res.status(400).json({ msg: errors.array()[0].msg });
     }
 
     const { email, password } = req.body;
 
     try {
+      console.log('Looking up user in database...');
       let user = await User.findOne({ email });
 
       if (!user) {
-        console.log('User not found:', email);
+        console.log(`Login failed: No user found with email ${email}`);
+        console.log('=== End POST /api/auth with invalid credentials ===');
         return res.status(400).json({ msg: 'Invalid Credentials' });
       }
 
+      console.log('User found, verifying password...');
       const isMatch = await bcrypt.compare(password, user.password);
 
       if (!isMatch) {
-        console.log('Password does not match for:', email);
+        console.log(`Login failed: Invalid password for user ${email}`);
+        console.log('=== End POST /api/auth with invalid credentials ===');
         return res.status(400).json({ msg: 'Invalid Credentials' });
       }
 
-      console.log('User authenticated:', email, 'with role:', user.role);
+      console.log(`Password verified for user ${email}`);
+      console.log('Generating JWT token...');
       
       const payload = {
         user: {
@@ -71,20 +83,21 @@ router.post(
       jwt.sign(
         payload,
         process.env.JWT_SECRET,
-        {
-          expiresIn: 360000
-        },
+        { expiresIn: 360000 },
         (err, token) => {
           if (err) {
-            console.error('Token generation error:', err);
+            console.error('Token generation failed:', err);
+            console.log('=== End POST /api/auth with token error ===');
             throw err;
           }
-          console.log('Token generated successfully for:', email);
+          console.log(`Login successful for user ${email}`);
+          console.log('=== End POST /api/auth ===');
           res.json({ token });
         }
       );
     } catch (err) {
-      console.error('Login error:', err.message);
+      console.error('Server error during authentication:', err);
+      console.log('=== End POST /api/auth with server error ===');
       res.status(500).json({ msg: 'Server Error' });
     }
   }

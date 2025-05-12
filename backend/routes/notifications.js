@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
@@ -9,12 +8,17 @@ const Notification = require('../models/Notification');
 // @desc    Get all notifications for a user
 // @access  Private
 router.get('/', auth, async (req, res) => {
+  console.log('=== GET /api/notifications ===');
   try {
+    console.log(`Fetching notifications for user: ${req.user.id}`);
     const notifications = await Notification.find({ user: req.user.id })
       .sort({ created_at: -1 });
+    console.log(`Retrieved ${notifications.length} notifications`);
+    console.log('=== End GET /api/notifications ===');
     res.json(notifications);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error fetching notifications:', err.message);
+    console.log('=== End GET /api/notifications with error ===');
     res.status(500).send('Server Error');
   }
 });

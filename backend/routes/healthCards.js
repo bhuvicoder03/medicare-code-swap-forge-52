@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
@@ -10,11 +9,16 @@ const HealthCard = require('../models/HealthCard');
 // @desc    Get all health cards for a user
 // @access  Private
 router.get('/', auth, async (req, res) => {
+  console.log('=== GET /api/health-cards ===');
   try {
+    console.log(`Fetching health cards for user: ${req.user.id}`);
     const healthCards = await HealthCard.find({ user: req.user.id }).sort({ date: -1 });
+    console.log(`Retrieved ${healthCards.length} health cards`);
+    console.log('=== End GET /api/health-cards ===');
     res.json(healthCards);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error fetching health cards:', err.message);
+    console.log('=== End GET /api/health-cards with error ===');
     res.status(500).send('Server Error');
   }
 });

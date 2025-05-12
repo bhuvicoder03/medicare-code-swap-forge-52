@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
@@ -10,12 +9,17 @@ const Transaction = require('../models/Transaction');
 // @desc    Get all transactions for a user
 // @access  Private
 router.get('/', auth, async (req, res) => {
+  console.log('=== GET /api/transactions ===');
   try {
+    console.log(`Fetching transactions for user: ${req.user.id}`);
     const transactions = await Transaction.find({ user: req.user.id })
       .sort({ date: -1 });
+    console.log(`Retrieved ${transactions.length} transactions`);
+    console.log('=== End GET /api/transactions ===');
     res.json(transactions);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error fetching transactions:', err.message);
+    console.log('=== End GET /api/transactions with error ===');
     res.status(500).send('Server Error');
   }
 });
