@@ -15,6 +15,13 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
 
   try {
     console.log(`Making API request to: ${API_URL}${endpoint}`);
+    console.log('Request details:', { endpoint, method: options.method || 'GET' });
+    console.log('Headers:', headers);
+    
+    // Log request body if present
+    if (options.body) {
+      console.log('Request body:', options.body);
+    }
     
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
@@ -30,12 +37,14 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
       responseData = await response.text();
     }
     
+    console.log('API response status:', response.status);
+    console.log('API response data:', responseData);
+    
     if (!response.ok) {
       console.error('API error response:', responseData);
       throw new Error(responseData.msg || responseData.message || responseData || 'API request failed');
     }
     
-    console.log('API request successful:', { endpoint, status: response.status });
     return responseData;
   } catch (error) {
     console.error('API request error:', error);

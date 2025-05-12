@@ -1,4 +1,3 @@
-
 import { AuthUser, UserRole } from '@/types/app.types';
 import { apiRequest } from './api';
 
@@ -6,6 +5,10 @@ import { apiRequest } from './api';
 export const signInService = async (email: string, password: string) => {
   try {
     console.log('Signing in with:', email);
+    
+    // DEBUG: Log parameters being sent to API
+    console.log('Auth parameters:', { email, password: '***' });
+    
     const data = await apiRequest('/auth', {
       method: 'POST',
       body: JSON.stringify({ email, password })
@@ -31,7 +34,7 @@ export const signInService = async (email: string, password: string) => {
     return { data: { user, token: data.token }, error: null };
   } catch (error: any) {
     console.error('Login error:', error);
-    return { error, data: null };
+    return { error: error, data: null };
   }
 };
 
