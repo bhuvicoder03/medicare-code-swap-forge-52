@@ -78,19 +78,19 @@ const SupportDashboard = () => {
       case 'overview':
         return <SupportOverview isLoading={isLoading} />;
       case 'patient-support':
-        return <PatientSupport isLoading={isLoading} />;
+        return <PatientSupport />;
       case 'hospital-support':
-        return <HospitalSupport isLoading={isLoading} />;
+        return <HospitalSupport />;
       case 'onboarding-support':
-        return <OnboardingSupport isLoading={isLoading} />;
+        return <OnboardingSupport />;
       case 'kyc-support':
-        return <KycSupport isLoading={isLoading} />;
+        return <KycSupport />;
       case 'technical-support':
-        return <TechnicalSupport isLoading={isLoading} />;
+        return <TechnicalSupport />;
       case 'reports':
         return <SupportReports />;
       case 'recovery':
-        return <RecoveryDashboard isLoading={isLoading} />;
+        return <RecoveryDashboard />;
       default:
         return <SupportOverview isLoading={isLoading} />;
     }
