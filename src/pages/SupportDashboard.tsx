@@ -30,11 +30,11 @@ const SupportDashboard = () => {
   const [activeTab, setActiveTab] = useState(activeTabFromQuery || 'overview');
   
   useEffect(() => {
-    // Update URL when active tab changes
+    // Update URL when active tab changes, but use replace instead of navigate to avoid adding to history
     if (activeTab === 'overview') {
-      navigate('/support-dashboard');
+      navigate('/support-dashboard', { replace: true });
     } else {
-      navigate(`/support-dashboard?tab=${activeTab}`);
+      navigate(`/support-dashboard?tab=${activeTab}`, { replace: true });
     }
   }, [activeTab, navigate]);
   
@@ -76,7 +76,7 @@ const SupportDashboard = () => {
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'overview':
-        return <SupportOverview isLoading={isLoading} />;
+        return <SupportOverview />;
       case 'patient-support':
         return <PatientSupport />;
       case 'hospital-support':
@@ -92,7 +92,7 @@ const SupportDashboard = () => {
       case 'recovery':
         return <RecoveryDashboard />;
       default:
-        return <SupportOverview isLoading={isLoading} />;
+        return <SupportOverview />;
     }
   };
 
