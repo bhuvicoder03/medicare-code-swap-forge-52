@@ -10,6 +10,7 @@ import OnboardingSupport from '@/components/support/OnboardingSupport';
 import KycSupport from '@/components/support/KycSupport';
 import TechnicalSupport from '@/components/support/TechnicalSupport';
 import RecoveryDashboard from '@/components/recovery/RecoveryDashboard';
+import SupportReports from '@/components/support/SupportReports';
 
 const SupportDashboard = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -29,6 +30,8 @@ const SupportDashboard = () => {
         return <KycSupport />;
       case 'technical-support':
         return <TechnicalSupport />;
+      case 'reports':
+        return <SupportReports />;
       case 'recovery':
         return <RecoveryDashboard />;
       default:
