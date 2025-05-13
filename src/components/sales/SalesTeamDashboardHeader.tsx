@@ -1,5 +1,4 @@
-
-import { Bell, ChevronDown, Menu, MessageSquare } from "lucide-react";
+import { Bell, ChevronDown, Menu, MessageSquare, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -113,7 +112,9 @@ const SalesTeamDashboardHeader = ({
             <DropdownMenuItem>Sales Targets</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" /> Log Out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
