@@ -37,7 +37,9 @@ const App = () => (
             <Route path="/our-cards" element={<OurCards />} />
             <Route path="/about-us" element={<AboutUs />} />
             <Route path="/login" element={<Login />} />
-             <Route path="/signup" element={<Signup />} />
+            <Route path="/signup" element={<Signup />} />
+            
+            {/* Protected Dashboard Routes */}
             <Route
               path="/admin-dashboard"
               element={
@@ -46,19 +48,62 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/hospital-dashboard"
+              element={
+                <ProtectedRoute requiredRole="hospital">
+                  <HospitalDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-dashboard"
+              element={
+                <ProtectedRoute requiredRole="patient">
+                  <PatientDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sales-dashboard"
+              element={
+                <ProtectedRoute requiredRole="sales">
+                  <SalesTeamDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/crm-dashboard"
+              element={
+                <ProtectedRoute requiredRole="crm">
+                  <CrmDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agent-dashboard"
+              element={
+                <ProtectedRoute requiredRole="agent">
+                  <AgentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/support-dashboard"
+              element={
+                <ProtectedRoute requiredRole="support">
+                  <SupportDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Public Routes */}
             <Route path="/hospital-registration" element={<HospitalRegistration />} />
-            <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
-            <Route path="/patient-dashboard" element={<PatientDashboard />} />
-            <Route path="/sales-dashboard" element={<SalesTeamDashboard />} />
-            <Route path="/crm-dashboard" element={<CrmDashboard />} />
-            <Route path="/agent-dashboard" element={<AgentDashboard />} />
-            <Route path="/support-dashboard" element={<SupportDashboard />} />
             <Route path="/sitemap" element={<Sitemap />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
             
-            
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
