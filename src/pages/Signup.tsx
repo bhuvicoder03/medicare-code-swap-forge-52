@@ -10,11 +10,13 @@ import {
   Mail, 
   Lock,
   User,
-  AlertCircle
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { UserRole } from '@/types/app.types';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -26,7 +28,7 @@ const Signup = () => {
     password: '',
     firstName: '',
     lastName: '',
-    role: 'patient' as const
+    role: 'patient' as UserRole
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,6 +78,7 @@ const Signup = () => {
     setError(null);
     
     try {
+      console.log('Attempting to register with:', formData);
       const { data, error } = await signUp(
         formData.email,
         formData.password,
@@ -85,24 +88,39 @@ const Signup = () => {
       );
       
       if (error) {
-        setError(error.message);
+        console.error('Registration error:', error);
+        setError(error.message || 'Registration failed');
+        toast({
+          title: "Registration Failed",
+          description: error.message || "Please try again",
+          variant: "destructive"
+        });
       } else if (data?.user) {
+        console.log('Registration successful:', data);
         toast({
           title: "Registration Successful",
           description: "Your account has been created successfully",
         });
         
-        // Navigation will happen automatically due to the AuthState change
+        const redirectPath = `/${data.user.role}-dashboard`;
+        console.log('Redirecting to:', redirectPath);
+        navigate(redirectPath, { replace: true });
       }
     } catch (err: any) {
+      console.error('Unexpected registration error:', err);
       setError(err.message || 'An unexpected error occurred');
+      toast({
+        title: "Registration Failed",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // If loading, show loading indicator
-  if (authState.loading) {
+  if (authState.loading || !authState.initialized) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
@@ -187,6 +205,23 @@ const Signup = () => {
                         autoComplete="new-password"
                         required
                       />
+                    </div>
+                    
+                    <div className="relative">
+                      <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+                      <select
+                        name="role"
+                        value={formData.role}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      >
+                        <option value="patient">Patient</option>
+                        <option value="hospital">Hospital</option>
+                        <option value="sales">Sales</option>
+                        <option value="crm">CRM</option>
+                        <option value="agent">Agent</option>
+                        <option value="support">Support</option>
+                      </select>
                     </div>
                     
                     <Button 

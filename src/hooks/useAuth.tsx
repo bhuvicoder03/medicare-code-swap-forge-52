@@ -3,6 +3,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { AuthState, AuthUser, UserRole } from '@/types/app.types';
 import { toast } from "@/components/ui/use-toast";
 import { apiRequest } from "@/services/api";
+import { loginUser, registerUser, getCurrentUser, logoutUser, checkAuthToken } from '@/services/authService';
 
 const initialState: AuthState = {
   user: null,
@@ -35,33 +36,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     console.log('Initializing auth');
-    // Check localStorage for user data
+    
     const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
-        console.log('Checking token:', token ? 'Token exists' : 'No token');
+        const hasToken = checkAuthToken();
+        console.log('Checking token:', hasToken ? 'Token exists' : 'No token');
         
-        if (token) {
+        if (hasToken) {
           try {
-            // Verify token validity by fetching user data
-            console.log('Fetching user data with token');
-            const userData = await apiRequest('/auth');
+            const userData = await getCurrentUser();
             console.log('User data received:', userData);
             
-            setAuthState({
-              user: {
-                id: userData._id,
-                email: userData.email,
-                role: userData.role as UserRole,
-                firstName: userData.firstName,
-                lastName: userData.lastName
-              },
-              loading: false,
-              initialized: true
-            });
+            if (userData) {
+              setAuthState({
+                user: userData,
+                loading: false,
+                initialized: true
+              });
+            } else {
+              console.log('No user data received, clearing token');
+              localStorage.removeItem('token');
+              setAuthState({
+                user: null,
+                loading: false,
+                initialized: true
+              });
+            }
           } catch (error) {
             console.error('Error validating token:', error);
-            // Token invalid, clear storage
             localStorage.removeItem('token');
             
             setAuthState({
@@ -94,43 +96,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       console.log('Signing in with:', email);
-      const data = await apiRequest('/auth', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
+      const { user, error } = await loginUser(email, password);
       
-      console.log('Sign in successful, received token:', data.token ? 'Token received' : 'No token');
-      localStorage.setItem('token', data.token);
+      if (error) {
+        console.error('Login error:', error);
+        return { error, data: null };
+      }
       
-      try {
-        // Fetch user data
-        console.log('Fetching user data after login');
-        const userData = await apiRequest('/auth');
-        console.log('User data after login:', userData);
-        
-        // Store user data in state
-        const user = {
-          id: userData._id,
-          email: userData.email,
-          role: userData.role as UserRole,
-          firstName: userData.firstName,
-          lastName: userData.lastName
-        };
-        
+      if (user) {
         console.log('Setting auth state with user:', user);
         setAuthState({
           user,
           loading: false,
           initialized: true
         });
-
-        return { data, error: null };
-      } catch (error: any) {
-        console.error('Error fetching user data after login:', error);
-        return { error, data: null };
+        
+        return { data: { user }, error: null };
+      } else {
+        console.error('No user data returned from login');
+        return { error: new Error('Failed to retrieve user data'), data: null };
       }
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Unexpected login error:', error);
       return { error, data: null };
     }
   };
@@ -142,42 +129,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       console.log('Registering new user:', { email, firstName, lastName, role });
-      // Register new user
-      const data = await apiRequest('/users', {
-        method: 'POST',
-        body: JSON.stringify({ 
-          email, 
-          password, 
-          firstName, 
-          lastName, 
-          role 
-        })
-      });
+      const { user, error } = await registerUser(email, password, firstName, lastName, role);
       
-      console.log('Registration successful, received token:', data.token ? 'Token received' : 'No token');
-      localStorage.setItem('token', data.token);
+      if (error) {
+        console.error('Registration error:', error);
+        return { error, data: null };
+      }
       
-      // Fetch user details to get correct format
-      console.log('Fetching user data after registration');
-      const userData = await apiRequest('/auth');
-      console.log('User data after registration:', userData);
-      
-      const user = {
-        id: userData._id,
-        email: userData.email,
-        role: userData.role as UserRole,
-        firstName: userData.firstName,
-        lastName: userData.lastName
-      };
-      
-      console.log('Setting auth state with user:', user);
-      setAuthState({
-        user,
-        loading: false,
-        initialized: true
-      });
-      
-      return { data: { user }, error: null };
+      if (user) {
+        console.log('Setting auth state with user:', user);
+        setAuthState({
+          user,
+          loading: false,
+          initialized: true
+        });
+        
+        return { data: { user }, error: null };
+      } else {
+        console.error('No user data returned from registration');
+        return { error: new Error('Failed to retrieve user data after registration'), data: null };
+      }
     } catch (error: any) {
       console.error('Registration error:', error);
       return { data: null, error };
@@ -186,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = () => {
     console.log('Signing out');
-    localStorage.removeItem('token');
+    logoutUser();
     
     setAuthState({
       user: null,

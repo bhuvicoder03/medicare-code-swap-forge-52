@@ -7,12 +7,8 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowRight, 
-  Hospital, 
-  Users,
   Mail, 
   Lock,
-  BadgePercent,
-  UserCheck,
   AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -45,9 +41,10 @@ const Login = () => {
   useEffect(() => {
     if (authState.initialized && authState.user) {
       const redirectPath = `/${authState.user.role}-dashboard`;
-      navigate(redirectPath);
+      console.log('User already authenticated, redirecting to:', redirectPath);
+      navigate(redirectPath, { replace: true });
     }
-  }, [authState.initialized, authState.user, navigate]);
+  }, [authState, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -101,7 +98,11 @@ const Login = () => {
           description: `Welcome back!`,
         });
         
-        // Navigation will happen automatically through the useEffect
+        if (data?.user?.role) {
+          const redirectPath = `/${data.user.role}-dashboard`;
+          console.log('Redirecting to:', redirectPath);
+          navigate(redirectPath, { replace: true });
+        }
       }
     } catch (err: any) {
       console.error('Unexpected login error:', err);
@@ -119,13 +120,14 @@ const Login = () => {
   const handleDemoLogin = async (type: 'hospital' | 'patient' | 'admin' | 'sales' | 'crm') => {
     setLoginType(type);
     setIsSubmitting(true);
+    setError(null);
     
     const credentials = demoCredentials[type];
     setFormData(credentials);
     
     try {
       console.log('Attempting demo login as:', type);
-      const { error } = await signIn(credentials.email, credentials.password);
+      const { error, data } = await signIn(credentials.email, credentials.password);
       
       if (error) {
         console.error('Demo login error:', error);
@@ -140,7 +142,12 @@ const Login = () => {
           title: "Demo Login Successful",
           description: `Logged in as ${type} demo user`,
         });
-        // Navigation will happen automatically through the useEffect
+        
+        if (data?.user?.role) {
+          const redirectPath = `/${data.user.role}-dashboard`;
+          console.log('Redirecting to:', redirectPath);
+          navigate(redirectPath, { replace: true });
+        }
       }
     } catch (err: any) {
       console.error('Unexpected demo login error:', err);
@@ -157,7 +164,7 @@ const Login = () => {
 
   // If still initializing auth, show loading indicator
   if (!authState.initialized) {
-    return <div className="flex items-center justify-center min-h-screen">Initializing...</div>;
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   return (
