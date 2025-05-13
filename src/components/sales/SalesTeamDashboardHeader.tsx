@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface SalesTeamDashboardHeaderProps {
   userName: string;
@@ -28,9 +30,12 @@ const SalesTeamDashboardHeader = ({
   pendingLeads = 0,
   toggleSidebar 
 }: SalesTeamDashboardHeaderProps) => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
   const handleLogout = () => {
-    localStorage.removeItem("salesAuthToken");
-    window.location.href = "/login";
+    signOut();
+    navigate('/login');
   };
 
   return (

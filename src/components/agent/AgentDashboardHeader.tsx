@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface AgentDashboardHeaderProps {
   agentName: string;
@@ -27,9 +29,12 @@ const AgentDashboardHeader = ({
   conversionRate,
   toggleSidebar
 }: AgentDashboardHeaderProps) => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
   const handleLogout = () => {
-    localStorage.removeItem("agentAuthToken");
-    window.location.href = "/login";
+    signOut();
+    navigate('/login');
   };
 
   return (

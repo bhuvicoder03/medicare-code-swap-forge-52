@@ -159,10 +159,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('Signing out');
     logoutUser();
     
+    // Clear any role-specific auth tokens
+    localStorage.removeItem("salesAuthToken");
+    localStorage.removeItem("hospitalAuthToken");
+    localStorage.removeItem("agentAuthToken");
+    localStorage.removeItem("patientDashboardWelcomeShown");
+    localStorage.removeItem("salesDashboardWelcomeShown");
+    
+    // Reset auth state
     setAuthState({
       user: null,
       loading: false,
       initialized: true
+    });
+    
+    // Show logout toast notification
+    toast({
+      title: "Logged out successfully",
+      description: "You have been logged out of your account",
     });
   };
 
