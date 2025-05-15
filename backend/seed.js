@@ -1,201 +1,120 @@
 
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
-
-// Models
 const User = require('./models/User');
 const Hospital = require('./models/Hospital');
 const HealthCard = require('./models/HealthCard');
 const Loan = require('./models/Loan');
 const Transaction = require('./models/Transaction');
 const Notification = require('./models/Notification');
+const fs = require('fs');
 
-// Data
-const demoUsers = require('./seed/demoUsers.json');
-const demoHospitals = require('./seed/demoHospitals.json');
-const demoHealthCards = require('./seed/demoHealthCards.json');
-const demoLoans = require('./seed/demoLoans.json');
-const demoTransactions = require('./seed/demoTransactions.json');
-const demoNotifications = require('./seed/demoNotifications.json');
+// Read seed data files
+const users = JSON.parse(fs.readFileSync('./seed/demoUsers.json', 'utf8'));
+const hospitals = JSON.parse(fs.readFileSync('./seed/demoHospitals.json', 'utf8'));
+const healthCards = JSON.parse(fs.readFileSync('./seed/demoHealthCards.json', 'utf8'));
+const loans = JSON.parse(fs.readFileSync('./seed/demoLoans.json', 'utf8'));
+const transactions = JSON.parse(fs.readFileSync('./seed/demoTransactions.json', 'utf8'));
+const notifications = JSON.parse(fs.readFileSync('./seed/demoNotifications.json', 'utf8'));
 
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('MongoDB Connected');
-    return true;
-  } catch (err) {
-    console.error('Error connecting to MongoDB:', err.message);
-    process.exit(1);
-  }
-};
-
-const seedUsers = async () => {
-  try {
-    // Clear existing users
-    await User.deleteMany({});
-    console.log('Cleared existing users');
-
-    // Create users
-    const users = await User.create(demoUsers);
-    console.log(`Seeded ${users.length} users`);
-    return users;
-  } catch (err) {
-    console.error('Error seeding users:', err);
-    process.exit(1);
-  }
-};
-
-const seedHospitals = async (users) => {
-  try {
-    // Clear existing hospitals
-    await Hospital.deleteMany({});
-    console.log('Cleared existing hospitals');
-
-    // Get hospital user
-    const hospitalUser = users.find(user => user.role === 'hospital');
-    
-    // Create hospitals with proper user reference
-    const hospitals = await Promise.all(
-      demoHospitals.map(async (hospital) => {
-        return Hospital.create({
-          ...hospital,
-          user: hospitalUser._id
-        });
-      })
-    );
-    console.log(`Seeded ${hospitals.length} hospitals`);
-    return hospitals;
-  } catch (err) {
-    console.error('Error seeding hospitals:', err);
-    process.exit(1);
-  }
-};
-
-const seedHealthCards = async (users) => {
-  try {
-    // Clear existing health cards
-    await HealthCard.deleteMany({});
-    console.log('Cleared existing health cards');
-
-    // Get patient user
-    const patientUser = users.find(user => user.role === 'patient');
-    
-    // Create health cards with proper user reference
-    const healthCards = await Promise.all(
-      demoHealthCards.map(async (card) => {
-        return HealthCard.create({
-          ...card,
-          user: patientUser._id
-        });
-      })
-    );
-    console.log(`Seeded ${healthCards.length} health cards`);
-    return healthCards;
-  } catch (err) {
-    console.error('Error seeding health cards:', err);
-    process.exit(1);
-  }
-};
-
-const seedLoans = async (users) => {
-  try {
-    // Clear existing loans
-    await Loan.deleteMany({});
-    console.log('Cleared existing loans');
-
-    // Get patient user
-    const patientUser = users.find(user => user.role === 'patient');
-    
-    // Create loans with proper user reference
-    const loans = await Promise.all(
-      demoLoans.map(async (loan) => {
-        return Loan.create({
-          ...loan,
-          user: patientUser._id
-        });
-      })
-    );
-    console.log(`Seeded ${loans.length} loans`);
-    return loans;
-  } catch (err) {
-    console.error('Error seeding loans:', err);
-    process.exit(1);
-  }
-};
-
-const seedTransactions = async (users) => {
-  try {
-    // Clear existing transactions
-    await Transaction.deleteMany({});
-    console.log('Cleared existing transactions');
-
-    // Get patient user
-    const patientUser = users.find(user => user.role === 'patient');
-    
-    // Create transactions with proper user reference
-    const transactions = await Promise.all(
-      demoTransactions.map(async (transaction) => {
-        return Transaction.create({
-          ...transaction,
-          user: patientUser._id
-        });
-      })
-    );
-    console.log(`Seeded ${transactions.length} transactions`);
-    return transactions;
-  } catch (err) {
-    console.error('Error seeding transactions:', err);
-    process.exit(1);
-  }
-};
-
-const seedNotifications = async (users) => {
-  try {
-    // Clear existing notifications
-    await Notification.deleteMany({});
-    console.log('Cleared existing notifications');
-
-    // Get patient user
-    const patientUser = users.find(user => user.role === 'patient');
-    
-    // Create notifications with proper user reference
-    const notifications = await Promise.all(
-      demoNotifications.map(async (notification) => {
-        return Notification.create({
-          ...notification,
-          user: patientUser._id
-        });
-      })
-    );
-    console.log(`Seeded ${notifications.length} notifications`);
-    return notifications;
-  } catch (err) {
-    console.error('Error seeding notifications:', err);
-    process.exit(1);
-  }
-};
+// Connect to MongoDB
+require('dotenv').config();
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
 
 const seedDatabase = async () => {
   try {
-    const connected = await connectDB();
-    if (!connected) return;
+    console.log('Starting database seeding...');
+
+    // Clear existing data
+    await User.deleteMany({});
+    await Hospital.deleteMany({});
+    await HealthCard.deleteMany({});
+    await Loan.deleteMany({});
+    await Transaction.deleteMany({});
+    await Notification.deleteMany({});
     
-    const users = await seedUsers();
-    await seedHospitals(users);
-    await seedHealthCards(users);
-    await seedLoans(users);
-    await seedTransactions(users);
-    await seedNotifications(users);
+    console.log('Cleared existing data');
+
+    // Insert users
+    const createdUsers = await User.insertMany(users);
+    console.log(`Inserted ${createdUsers.length} users`);
     
+    // Map user emails to their IDs for reference
+    const userMap = {};
+    createdUsers.forEach(user => {
+      userMap[user.email] = user._id;
+    });
+
+    // Insert hospitals and assign users
+    const hospitalData = hospitals.map(hospital => {
+      // Assign a random user as owner if needed
+      if (!hospital.user) {
+        const randomUser = createdUsers[Math.floor(Math.random() * createdUsers.length)];
+        hospital.user = randomUser._id;
+      }
+      return hospital;
+    });
+    
+    const createdHospitals = await Hospital.insertMany(hospitalData);
+    console.log(`Inserted ${createdHospitals.length} hospitals`);
+
+    // Insert health cards with proper user references
+    const healthCardData = healthCards.map(card => {
+      if (card.userEmail && userMap[card.userEmail]) {
+        card.user = userMap[card.userEmail];
+        delete card.userEmail;
+      }
+      return card;
+    });
+    
+    const createdHealthCards = await HealthCard.insertMany(healthCardData);
+    console.log(`Inserted ${createdHealthCards.length} health cards`);
+
+    // Insert loans with proper user references
+    const loanData = loans.map(loan => {
+      if (loan.userEmail && userMap[loan.userEmail]) {
+        loan.user = userMap[loan.userEmail];
+        delete loan.userEmail;
+      }
+      return loan;
+    });
+    
+    const createdLoans = await Loan.insertMany(loanData);
+    console.log(`Inserted ${createdLoans.length} loans`);
+
+    // Insert transactions with proper user references
+    const transactionData = transactions.map(transaction => {
+      if (transaction.userEmail && userMap[transaction.userEmail]) {
+        transaction.user = userMap[transaction.userEmail];
+        delete transaction.userEmail;
+      }
+      return transaction;
+    });
+    
+    const createdTransactions = await Transaction.insertMany(transactionData);
+    console.log(`Inserted ${createdTransactions.length} transactions`);
+
+    // Insert notifications with proper user references
+    const notificationData = notifications.map(notification => {
+      if (notification.userEmail && userMap[notification.userEmail]) {
+        notification.user = userMap[notification.userEmail];
+        delete notification.userEmail;
+      }
+      return notification;
+    });
+    
+    const createdNotifications = await Notification.insertMany(notificationData);
+    console.log(`Inserted ${createdNotifications.length} notifications`);
+
     console.log('Database seeding completed successfully');
-    process.exit(0);
-  } catch (err) {
-    console.error('Error seeding database:', err);
-    process.exit(1);
+    
+  } catch (error) {
+    console.error('Error seeding database:', error);
+  } finally {
+    mongoose.disconnect();
+    console.log('Database connection closed');
   }
 };
 

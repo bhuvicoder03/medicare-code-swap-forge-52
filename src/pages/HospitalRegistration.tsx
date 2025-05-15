@@ -1,451 +1,530 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import { ArrowRight, Building, CheckCircle2 } from 'lucide-react';
+import { registerHospital } from '@/services/hospitalService';
+import { Hospital } from '@/types/app.types';
+import { useAuth } from '@/hooks/useAuth';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { Building, Check, ArrowRight } from 'lucide-react';
 
-// Schema for form validation
-const formSchema = z.object({
-  hospitalName: z.string().min(3, { message: "Hospital name must be at least 3 characters" }),
-  contactPerson: z.string().min(3, { message: "Contact person name is required" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  phone: z.string().min(10, { message: "Please enter a valid phone number" }),
-  address: z.string().min(5, { message: "Address is required" }),
-  city: z.string().min(2, { message: "City is required" }),
-  state: z.string().min(2, { message: "State is required" }),
-  zipCode: z.string().min(5, { message: "Zip code is required" }),
-  establishedYear: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 1900 && Number(val) <= new Date().getFullYear(), {
-    message: "Please enter a valid establishment year",
-  }),
-  numberOfBeds: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-    message: "Please enter a valid number of beds",
-  }),
-});
-
-const HospitalRegistration = () => {
+const HospitalRegistration: React.FC = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  const [formData, setFormData] = useState<Partial<Hospital>>({
+    name: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    contactPerson: '',
+    contactEmail: user?.email || '',
+    contactPhone: '',
+    hospitalType: 'private',
+    specialties: [],
+    services: [],
+    website: '',
+  });
+  
   const [loading, setLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [credentials, setCredentials] = useState({
-    referenceNumber: '',
-    userId: '',
-    loginId: '',
-    password: '',
-  });
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      hospitalName: '',
-      contactPerson: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      establishedYear: '',
-      numberOfBeds: '',
-    },
-  });
-
-  // Generate a random alphanumeric string
-  const generateRandomString = (length: number) => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+  const [currentStep, setCurrentStep] = useState(1);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [specialtyInput, setSpecialtyInput] = useState('');
+  const [serviceInput, setServiceInput] = useState('');
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Generate secure password
-  const generateSecurePassword = () => {
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const symbols = '!@#$%^&*()_+';
-    
-    let password = '';
-    // Ensure at least one of each character type
-    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
-    
-    // Add more random characters
-    for (let i = 0; i < 8; i++) {
-      const allChars = uppercase + lowercase + numbers + symbols;
-      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+  const addSpecialty = () => {
+    if (specialtyInput && !formData.specialties?.includes(specialtyInput)) {
+      setFormData(prev => ({ 
+        ...prev, 
+        specialties: [...(prev.specialties || []), specialtyInput] 
+      }));
+      setSpecialtyInput('');
+    }
+  };
+  
+  const removeSpecialty = (specialty: string) => {
+    setFormData(prev => ({
+      ...prev,
+      specialties: prev.specialties?.filter(s => s !== specialty)
+    }));
+  };
+  
+  const addService = () => {
+    if (serviceInput && !formData.services?.includes(serviceInput)) {
+      setFormData(prev => ({ 
+        ...prev, 
+        services: [...(prev.services || []), serviceInput] 
+      }));
+      setServiceInput('');
+    }
+  };
+  
+  const removeService = (service: string) => {
+    setFormData(prev => ({
+      ...prev,
+      services: prev.services?.filter(s => s !== service)
+    }));
+  };
+  
+  const nextStep = () => {
+    if (currentStep === 1) {
+      if (!formData.name || !formData.address || !formData.city || !formData.state || !formData.zipCode) {
+        toast({
+          variant: "destructive",
+          title: "Missing Information",
+          description: "Please fill in all required fields before proceeding."
+        });
+        return;
+      }
     }
     
-    // Shuffle the password
-    return password.split('').sort(() => 0.5 - Math.random()).join('');
+    if (currentStep === 2) {
+      if (!formData.contactPerson || !formData.contactEmail || !formData.contactPhone) {
+        toast({
+          variant: "destructive",
+          title: "Missing Information",
+          description: "Please provide contact information before proceeding."
+        });
+        return;
+      }
+    }
+    
+    setCurrentStep(prev => prev + 1);
   };
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setLoading(true);
+  
+  const prevStep = () => {
+    setCurrentStep(prev => prev - 1);
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!termsAccepted) {
+      toast({
+        variant: "destructive",
+        title: "Terms Not Accepted",
+        description: "Please accept the terms and conditions to register."
+      });
+      return;
+    }
     
     try {
-      // Simulate API call with a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Generate credentials
-      const referenceNumber = `RI-HOSP-${Date.now().toString().slice(-6)}`;
-      const userId = `H${Date.now().toString().slice(-6)}`;
-      const loginId = values.email;
-      const password = generateSecurePassword();
-      
-      setCredentials({
-        referenceNumber,
-        userId,
-        loginId,
-        password,
-      });
-      
-      // In a real app, you would save this data to a database
-      console.log("Hospital registration data:", {
-        ...values,
-        referenceNumber,
-        userId,
-        loginId,
-        password,
-      });
+      setLoading(true);
+      const response = await registerHospital(formData);
       
       toast({
-        title: "Registration Successful!",
-        description: "Your hospital has been registered successfully.",
+        title: "Hospital Registration Submitted",
+        description: "Your registration has been submitted for review.",
       });
       
-      setIsSubmitted(true);
+      // Navigate to dashboard after successful submission
+      setTimeout(() => {
+        navigate('/hospital-dashboard');
+      }, 2000);
+      
     } catch (error) {
+      console.error('Registration error:', error);
       toast({
-        title: "Registration Failed",
-        description: "An error occurred while registering your hospital. Please try again.",
         variant: "destructive",
+        title: "Registration Failed",
+        description: "There was an error submitting your registration. Please try again.",
       });
     } finally {
       setLoading(false);
     }
   };
-
-  const handleCopyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: "Information copied to clipboard.",
-    });
-  };
-
-  // Display success screen if form was submitted
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-grow py-16">
-          <div className="container mx-auto px-4 sm:px-6 max-w-3xl">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 md:p-10">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-                  <CheckCircle2 className="h-8 w-8 text-green-600" />
-                </div>
-                <h1 className="text-2xl md:text-3xl font-bold font-display text-gray-900 mb-2">
-                  Registration Successful!
-                </h1>
-                <p className="text-lg text-gray-600">
-                  Your hospital has been registered with RI Medicare. Please save your credentials.
-                </p>
+  
+  return (
+    <div className="container max-w-4xl mx-auto py-8 px-4">
+      <Card>
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center mb-4">
+            <Building className="h-10 w-10 text-primary" />
+          </div>
+          <CardTitle className="text-2xl text-center">Hospital Registration</CardTitle>
+          <CardDescription className="text-center">
+            Register your hospital with RI Medicare to provide healthcare services to our members.
+          </CardDescription>
+          <div className="flex justify-center mt-6">
+            <div className="flex items-center">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                currentStep >= 1 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+              }`}>
+                1
               </div>
-              
-              <div className="space-y-6 mb-8">
-                <div className="p-6 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="space-y-4">
+              <div className={`h-1 w-12 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                currentStep >= 2 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+              }`}>
+                2
+              </div>
+              <div className={`h-1 w-12 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                currentStep >= 3 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+              }`}>
+                3
+              </div>
+              <div className={`h-1 w-12 ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                currentStep >= 4 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+              }`}>
+                4
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            {currentStep === 1 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Hospital Information</h3>
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="name">Hospital Name *</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Enter hospital name"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="address">Address *</Label>
+                    <Input
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      placeholder="Street address"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">Reference Number</span>
+                      <Label htmlFor="city">City *</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        placeholder="City"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="state">State *</Label>
+                      <Input
+                        id="state"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        placeholder="State"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="zipCode">Zip Code *</Label>
+                    <Input
+                      id="zipCode"
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleChange}
+                      placeholder="Zip code"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="hospitalType">Hospital Type</Label>
+                    <Select 
+                      value={formData.hospitalType || 'private'}
+                      onValueChange={(value) => handleSelectChange('hospitalType', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select hospital type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="government">Government</SelectItem>
+                        <SelectItem value="private">Private</SelectItem>
+                        <SelectItem value="nonprofit">Non-Profit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Contact Information</h3>
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="contactPerson">Contact Person Name *</Label>
+                    <Input
+                      id="contactPerson"
+                      name="contactPerson"
+                      value={formData.contactPerson}
+                      onChange={handleChange}
+                      placeholder="Full name"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="contactEmail">Contact Email *</Label>
+                    <Input
+                      id="contactEmail"
+                      name="contactEmail"
+                      type="email"
+                      value={formData.contactEmail}
+                      onChange={handleChange}
+                      placeholder="Email address"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="contactPhone">Contact Phone *</Label>
+                    <Input
+                      id="contactPhone"
+                      name="contactPhone"
+                      value={formData.contactPhone}
+                      onChange={handleChange}
+                      placeholder="Phone number"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="website">Website (optional)</Label>
+                    <Input
+                      id="website"
+                      name="website"
+                      value={formData.website || ''}
+                      onChange={handleChange}
+                      placeholder="https://yourhospital.com"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="registrationNumber">Registration Number (optional)</Label>
+                    <Input
+                      id="registrationNumber"
+                      name="registrationNumber"
+                      value={formData.registrationNumber || ''}
+                      onChange={handleChange}
+                      placeholder="Official registration number"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Services & Specialties</h3>
+                
+                <div>
+                  <Label htmlFor="specialties">Hospital Specialties</Label>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      id="specialties"
+                      value={specialtyInput}
+                      onChange={(e) => setSpecialtyInput(e.target.value)}
+                      placeholder="Add a specialty"
+                      className="flex-1"
+                    />
+                    <Button type="button" onClick={addSpecialty} variant="outline">Add</Button>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.specialties?.map((specialty, index) => (
+                      <div key={index} className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-sm flex items-center">
+                        {specialty}
                         <button 
-                          onClick={() => handleCopyToClipboard(credentials.referenceNumber)}
-                          className="text-xs text-brand-600 hover:text-brand-700"
+                          type="button" 
+                          className="ml-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => removeSpecialty(specialty)}
                         >
-                          Copy
+                          &times;
                         </button>
                       </div>
-                      <div className="text-lg font-semibold text-gray-900">{credentials.referenceNumber}</div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">User ID</span>
-                        <button 
-                          onClick={() => handleCopyToClipboard(credentials.userId)}
-                          className="text-xs text-brand-600 hover:text-brand-700"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                      <div className="text-lg font-semibold text-gray-900">{credentials.userId}</div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">Login ID (Your Email)</span>
-                        <button 
-                          onClick={() => handleCopyToClipboard(credentials.loginId)}
-                          className="text-xs text-brand-600 hover:text-brand-700"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                      <div className="text-lg font-semibold text-gray-900">{credentials.loginId}</div>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">Password</span>
-                        <button 
-                          onClick={() => handleCopyToClipboard(credentials.password)}
-                          className="text-xs text-brand-600 hover:text-brand-700"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                      <div className="text-lg font-semibold text-gray-900 font-mono">{credentials.password}</div>
-                    </div>
+                    ))}
+                    {formData.specialties?.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No specialties added yet</p>
+                    )}
                   </div>
                 </div>
                 
-                <div className="bg-amber-50 border border-amber-100 p-4 rounded-lg">
-                  <p className="text-amber-800 text-sm">
-                    <strong>Important:</strong> Please save these credentials securely. This is the only time you'll see your password.
-                  </p>
+                <div>
+                  <Label htmlFor="services">Services Offered</Label>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      id="services"
+                      value={serviceInput}
+                      onChange={(e) => setServiceInput(e.target.value)}
+                      placeholder="Add a service"
+                      className="flex-1"
+                    />
+                    <Button type="button" onClick={addService} variant="outline">Add</Button>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.services?.map((service, index) => (
+                      <div key={index} className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-sm flex items-center">
+                        {service}
+                        <button 
+                          type="button" 
+                          className="ml-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => removeService(service)}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                    {formData.services?.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No services added yet</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="bedCount">Number of Beds</Label>
+                  <Input
+                    id="bedCount"
+                    name="bedCount"
+                    type="number"
+                    min="0"
+                    value={formData.bedCount || ''}
+                    onChange={handleChange}
+                    placeholder="Number of beds"
+                  />
                 </div>
               </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  variant="default" 
-                  className="bg-brand-600 hover:bg-brand-700 flex-1"
-                  onClick={() => navigate('/login')}
-                >
-                  Go to Login
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => window.print()}
-                >
-                  Print Credentials
-                </Button>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow py-16">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-100 mb-4">
-                <Building className="h-8 w-8 text-brand-600" />
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold font-display text-gray-900 mb-2">
-                Hospital Registration
-              </h1>
-              <p className="text-lg text-gray-600 max-w-lg mx-auto">
-                Join the RI Medicare network to provide flexible payment options to your patients.
-              </p>
-            </div>
+            )}
             
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 md:p-10">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="hospitalName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Hospital Name*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter hospital name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="contactPerson"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Person*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter contact person's name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email Address*</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="Enter email address" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter phone number" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Address*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter hospital address" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter city" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter state" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="zipCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Zip Code*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter zip code" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="establishedYear"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Year Established*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter establishment year" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="numberOfBeds"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Number of Beds*</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter number of beds" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+            {currentStep === 4 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Review & Submit</h3>
+                
+                <div className="bg-muted p-4 rounded-lg space-y-4">
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground">Hospital Information</h4>
+                    <p className="font-medium mt-1">{formData.name}</p>
+                    <p>{formData.address}, {formData.city}, {formData.state} - {formData.zipCode}</p>
+                    <p className="mt-1">Type: {formData.hospitalType?.charAt(0).toUpperCase() + formData.hospitalType?.slice(1)}</p>
                   </div>
                   
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">
-                      By submitting this form, you agree to RI Medicare's <a href="#" className="text-brand-600 hover:underline">Terms of Service</a> and <a href="#" className="text-brand-600 hover:underline">Privacy Policy</a>.
-                    </p>
+                  <Separator />
+                  
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground">Contact Information</h4>
+                    <p>{formData.contactPerson}</p>
+                    <p>{formData.contactEmail}</p>
+                    <p>{formData.contactPhone}</p>
+                    {formData.website && <p>{formData.website}</p>}
+                    {formData.registrationNumber && <p>Reg #: {formData.registrationNumber}</p>}
                   </div>
                   
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-brand-600 hover:bg-brand-700"
-                    disabled={loading}
+                  <Separator />
+                  
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground">Services & Specialties</h4>
+                    <div className="mt-2">
+                      <h5 className="text-xs text-muted-foreground">Specialties</h5>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {formData.specialties && formData.specialties.length > 0 ? 
+                          formData.specialties.map((specialty, index) => (
+                            <span key={index} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
+                              {specialty}
+                            </span>
+                          )) : 
+                          <p className="text-xs text-muted-foreground">None specified</p>
+                        }
+                      </div>
+                    </div>
+                    
+                    <div className="mt-2">
+                      <h5 className="text-xs text-muted-foreground">Services</h5>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {formData.services && formData.services.length > 0 ? 
+                          formData.services.map((service, index) => (
+                            <span key={index} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
+                              {service}
+                            </span>
+                          )) : 
+                          <p className="text-xs text-muted-foreground">None specified</p>
+                        }
+                      </div>
+                    </div>
+                    
+                    {formData.bedCount && (
+                      <p className="mt-2">Beds: {formData.bedCount}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2 mt-4">
+                  <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(!!checked)} />
+                  <label
+                    htmlFor="terms"
+                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    {loading ? "Processing..." : "Register Hospital"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </form>
-              </Form>
-            </div>
-          </div>
-        </div>
-      </main>
-      <Footer />
+                    I accept the terms and conditions of RI Medicare and confirm that all information provided is accurate.
+                  </label>
+                </div>
+              </div>
+            )}
+          </form>
+        </CardContent>
+        <CardFooter className="flex justify-between border-t p-6">
+          {currentStep > 1 && (
+            <Button type="button" variant="outline" onClick={prevStep}>
+              Back
+            </Button>
+          )}
+          
+          {currentStep < 4 ? (
+            <Button type="button" className="ml-auto" onClick={nextStep}>
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button 
+              type="submit" 
+              className="ml-auto" 
+              onClick={handleSubmit} 
+              disabled={loading || !termsAccepted}
+            >
+              {loading ? 'Submitting...' : 'Submit Registration'}
+              {!loading && <Check className="ml-2 h-4 w-4" />}
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
     </div>
   );
 };
