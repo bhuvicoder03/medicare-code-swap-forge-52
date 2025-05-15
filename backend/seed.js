@@ -60,11 +60,13 @@ const seedDatabase = async () => {
     const createdHospitals = await Hospital.insertMany(hospitalData);
     console.log(`Inserted ${createdHospitals.length} hospitals`);
 
-    // Insert health cards with proper user references
+    // Assign a default user to health cards if not specified
+    // This fixes the validation error by ensuring all health cards have a user
     const healthCardData = healthCards.map(card => {
-      if (card.userEmail && userMap[card.userEmail]) {
-        card.user = userMap[card.userEmail];
-        delete card.userEmail;
+      if (!card.user) {
+        // Find the first patient user to associate with the health card
+        const patientUser = createdUsers.find(user => user.role === 'patient');
+        card.user = patientUser ? patientUser._id : createdUsers[0]._id;
       }
       return card;
     });
@@ -110,8 +112,8 @@ const seedDatabase = async () => {
 
     console.log('Database seeding completed successfully');
     
-  } catch (error) {
-    console.error('Error seeding database:', error);
+  } catch (err) {
+    console.error('Error seeding database:', err);
   } finally {
     mongoose.disconnect();
     console.log('Database connection closed');
