@@ -48,17 +48,36 @@ const seedDatabase = async () => {
     });
 
     // Insert hospitals and assign users
-    const hospitalData = hospitals.map(hospital => {
-      // Assign a random user as owner if needed
-      if (!hospital.user) {
-        const randomUser = createdUsers[Math.floor(Math.random() * createdUsers.length)];
-        hospital.user = randomUser._id;
+    const hospitalData = hospitals.map((hospital, index) => {
+      // Map each hospital to its corresponding user by email
+      let userEmail;
+      
+      if (hospital.name === "City General Hospital") {
+        userEmail = "rajesh@cityhospital.com";
+      } else if (hospital.name === "Wellness Multispecialty Hospital") {
+        userEmail = "priya@wellnesshospital.com";
+      } else if (hospital.name === "LifeCare Medical Center") {
+        userEmail = "anand@lifecaremedical.com";
+      } else {
+        // Fallback to a default hospital user
+        userEmail = "hospital@demo.com";
       }
-      return hospital;
+      
+      // Assign the hospital to the corresponding user
+      return {
+        ...hospital,
+        user: userMap[userEmail]
+      };
     });
     
     const createdHospitals = await Hospital.insertMany(hospitalData);
     console.log(`Inserted ${createdHospitals.length} hospitals`);
+
+    // Create hospital ID to record mapping for referencing
+    const hospitalMap = {};
+    createdHospitals.forEach(hospital => {
+      hospitalMap[hospital.name] = hospital._id;
+    });
 
     // Assign a default user to health cards if not specified
     // This fixes the validation error by ensuring all health cards have a user
