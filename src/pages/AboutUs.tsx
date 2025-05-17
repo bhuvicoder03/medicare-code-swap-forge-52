@@ -1,19 +1,87 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowRight, Check, Users, Heart, Briefcase, CreditCard, Building, Mail, Phone, MapPin, Pill, Ambulance, Store, TestTube } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
+import emailjs from 'emailjs-com';
 
 const AboutUs = () => {
   const [loaded, setLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("financing");
+  const { toast } = useToast();
+  
+  // Contact form state
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: '',
+  });
+  
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     setLoaded(true);
+    
+    // Initialize EmailJS with your User ID
+    // You'll need to get this from your EmailJS account
+    emailjs.init("YOUR_USER_ID_HERE"); // Replace with your actual EmailJS User ID
   }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData({
+      ...formData,
+      [id]: value,
+    });
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSending(true);
+    
+    try {
+      // Send email using EmailJS
+      const result = await emailjs.send(
+        "YOUR_SERVICE_ID", // Replace with your EmailJS Service ID
+        "YOUR_TEMPLATE_ID", // Replace with your EmailJS Template ID
+        {
+          from_name: formData.name,
+          from_email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+        }
+      );
+      
+      toast({
+        title: "Message Sent!",
+        description: "We've received your message and will get back to you soon.",
+        variant: "default",
+      });
+      
+      // Reset form data
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: '',
+      });
+      
+    } catch (error) {
+      console.error("Failed to send email:", error);
+      toast({
+        title: "Message Failed",
+        description: "There was an issue sending your message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
 
   const leaders = [
     {
@@ -545,7 +613,7 @@ const AboutUs = () => {
                 <div className="lg:w-1/2">
                   <div className={`glassmorphism p-8 rounded-2xl transition-all duration-500 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`} style={{ transitionDelay: '300ms' }}>
                     <h3 className="text-2xl font-semibold text-gray-900 mb-6">Get in Touch</h3>
-                    <form className="space-y-6">
+                    <form className="space-y-6" onSubmit={handleSubmit}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
@@ -554,6 +622,9 @@ const AboutUs = () => {
                             id="name"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                             placeholder="Enter your name"
+                            value={formData.name}
+                            onChange={handleInputChange}
+                            required
                           />
                         </div>
                         <div>
@@ -563,6 +634,9 @@ const AboutUs = () => {
                             id="email"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                             placeholder="Enter your email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            required
                           />
                         </div>
                       </div>
@@ -573,19 +647,29 @@ const AboutUs = () => {
                           id="subject"
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           placeholder="Enter subject"
+                          value={formData.subject}
+                          onChange={handleInputChange}
+                          required
                         />
                       </div>
                       <div>
                         <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                        <textarea
+                        <Textarea
                           id="message"
                           rows={4}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           placeholder="Enter your message"
-                        ></textarea>
+                          value={formData.message}
+                          onChange={handleInputChange}
+                          required
+                        />
                       </div>
-                      <Button type="submit" className="w-full bg-brand-600 hover:bg-brand-700">
-                        Send Message
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-brand-600 hover:bg-brand-700"
+                        disabled={sending}
+                      >
+                        {sending ? 'Sending...' : 'Send Message'}
                       </Button>
                     </form>
                   </div>
