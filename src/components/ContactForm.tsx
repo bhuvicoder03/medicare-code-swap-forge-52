@@ -2,13 +2,13 @@
 import { useState, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import emailjs from 'emailjs-com';
 
 // EmailJS configuration constants
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID"; 
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || "YOUR_TEMPLATE_ID";
-const EMAILJS_USER_ID = import.meta.env.VITE_EMAILJS_USER_ID || "YOUR_USER_ID";
+const EMAILJS_SERVICE_ID = "YOUR_SERVICE_ID"; // Replace with your actual EmailJS Service ID
+const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID"; // Replace with your actual EmailJS Template ID
+const EMAILJS_USER_ID = "YOUR_USER_ID"; // Replace with your actual EmailJS User ID
 
 interface ContactFormProps {
   className?: string;
@@ -40,9 +40,6 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
     setSending(true);
     
     try {
-      // Initialize EmailJS with your User ID
-      emailjs.init(EMAILJS_USER_ID);
-      
       // Send email using EmailJS
       const result = await emailjs.send(
         EMAILJS_SERVICE_ID,
@@ -52,7 +49,8 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
           from_email: formData.email,
           subject: formData.subject,
           message: formData.message,
-        }
+        },
+        EMAILJS_USER_ID
       );
       
       toast({
@@ -73,7 +71,7 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
       console.error("Failed to send email:", error);
       toast({
         title: "Message Failed",
-        description: "There was an issue sending your message. Please try again later.",
+        description: "There was an issue sending your message. Please try again.",
         variant: "destructive",
       });
     } finally {
