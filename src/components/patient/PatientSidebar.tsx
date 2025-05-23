@@ -1,151 +1,114 @@
-
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarFooter,
-} from "@/components/ui/sidebar";
-import { User, CreditCard, FileText, Activity, Calendar, Bell, Settings, LogOut } from "lucide-react";
+  LayoutDashboard,
+  CreditCard,
+  CalendarDays,
+  Building,
+  Banknote,
+  Settings,
+  CalendarPlus,
+  Stethoscope,
+  Wallet,
+  FileText,
+} from "lucide-react";
 
-type PatientSidebarProps = {
+interface PatientSidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-};
+}
 
-const PatientSidebar = ({ isOpen, setIsOpen, activeTab, onTabChange }: PatientSidebarProps) => {
-  // Updated to prevent default behavior and use tab change directly
-  const handleItemClick = (tab: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    onTabChange(tab);
-  };
+const PatientSidebar: React.FC<PatientSidebarProps> = ({ isOpen, setIsOpen }) => {
+  const location = useLocation();
+  const pathname = location.pathname;
+
+  const menuItems = [
+    { icon: <LayoutDashboard size={18} />, name: "Dashboard", path: "/patient-dashboard" },
+    { icon: <CreditCard size={18} />, name: "Health Card", path: "/patient-dashboard?tab=healthcard" },
+    { icon: <CalendarDays size={18} />, name: "Appointments", path: "/patient-dashboard?tab=appointments" },
+    { icon: <Building size={18} />, name: "Hospital Visits", path: "/patient-dashboard?tab=hospitals" },
+    { icon: <Banknote size={18} />, name: "Loans", path: "/patient-dashboard?tab=loans" },
+    { icon: <Settings size={18} />, name: "Settings", path: "/patient-dashboard?tab=settings" },
+  ];
+
+  const quickActions = [
+    { 
+      icon: <CalendarPlus size={18} />, 
+      name: "Book Appointment", 
+      path: "/book-appointment",
+      color: "text-blue-600" 
+    },
+    { 
+      icon: <Stethoscope size={18} />, 
+      name: "Find Doctor", 
+      path: "/book-appointment",
+      color: "text-green-600" 
+    },
+    { 
+      icon: <Wallet size={18} />, 
+      name: "Add Funds", 
+      path: "/patient-dashboard?tab=healthcard",
+      color: "text-purple-600" 
+    },
+    { 
+      icon: <FileText size={18} />, 
+      name: "Apply for Loan", 
+      path: "/apply-loan",
+      color: "text-orange-600" 
+    }
+  ];
 
   return (
-    <Sidebar side="left" variant="sidebar" collapsible={isOpen ? "none" : "offcanvas"}>
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
-            <CreditCard className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-lg font-semibold">RI Medicare</div>
-            <div className="text-xs text-sidebar-foreground/70">Patient Portal</div>
-          </div>
-        </div>
-      </SidebarHeader>
-      
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton 
-                isActive={activeTab === "overview"}
-                onClick={() => onTabChange("overview")}
-              >
-                <Activity />
-                <span>Overview</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton 
-                isActive={activeTab === "health-card"}
-                onClick={() => onTabChange("health-card")}
-              >
-                <CreditCard />
-                <span>My Health Card</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton 
-                isActive={activeTab === "loans"}
-                onClick={() => onTabChange("loans")}
-              >
-                <FileText />
-                <span>My Loans</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+    <aside
+      className={cn(
+        "bg-white border-r h-full w-64 flex-col space-y-6 p-4 relative z-50",
+        isOpen ? "flex" : "hidden"
+      )}
+    >
+      <div className="pb-2 border-b">
+        <Link to="/" className="flex items-center text-2xl font-semibold">
+          <img src="/logo.svg" alt="Rimedicare Logo" className="mr-2 h-6 w-6" />
+          Rimedicare
+        </Link>
+      </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Healthcare</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton 
-                isActive={activeTab === "hospital-visits"}
-                onClick={() => onTabChange("hospital-visits")}
-              >
-                <Calendar />
-                <span>Hospital Visits</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton 
-                onClick={() => onTabChange("medical-records")}
-                isActive={activeTab === "medical-records"}
-              >
-                <FileText />
-                <span>Medical Records</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+      <div className="flex flex-col space-y-1">
+        <h4 className="font-medium text-sm">Menu</h4>
+        {menuItems.map((item) => (
+          <Link
+            key={item.name}
+            to={item.path}
+            className={cn(
+              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-brand-600 hover:bg-brand-50 rounded-md transition-all",
+              pathname === item.path
+                ? "text-brand-600 bg-brand-50"
+                : "text-gray-500"
+            )}
+          >
+            <div className="mr-2">{item.icon}</div>
+            <span>{item.name}</span>
+          </Link>
+        ))}
+      </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => onTabChange("notifications")}
-                isActive={activeTab === "notifications"}
-              >
-                <Bell />
-                <span>Notifications</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => onTabChange("settings")}
-                isActive={activeTab === "settings"}
-              >
-                <Settings />
-                <span>Settings</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter>
-        <div className="mx-4 mb-2 mt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gray-200">
-                <img
-                  src="https://github.com/shadcn.png"
-                  alt="Patient Avatar"
-                  className="h-full w-full rounded-full object-cover"
-                />
-              </div>
-              <div>
-                <div className="text-sm font-medium">John Doe</div>
-                <div className="text-xs text-sidebar-foreground/70">Patient</div>
-              </div>
-            </div>
-            <button className="text-gray-500 hover:text-red-500">
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
-      </SidebarFooter>
-    </Sidebar>
+      <div className="flex flex-col space-y-1">
+        <h4 className="font-medium text-sm">Quick Actions</h4>
+        {quickActions.map((action) => (
+          <Link
+            key={action.name}
+            to={action.path}
+            className={cn(
+              "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:bg-gray-100 rounded-md transition-all",
+              "text-gray-500 hover:" + action.color
+            )}
+          >
+            <div className="mr-2">{action.icon}</div>
+            <span>{action.name}</span>
+          </Link>
+        ))}
+      </div>
+    </aside>
   );
 };
 

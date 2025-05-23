@@ -64,7 +64,8 @@ export const processPayment = async (request: PaymentRequest): Promise<PaymentRe
       description: request.description,
       hospital: request.hospitalId || 'unknown',
       status: 'completed',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      userId: request.patientId // Adding userId field required by the API
     };
     
     // Attempt to record the transaction
@@ -228,4 +229,27 @@ export const processPaymentWithFallback = async (
   }
   
   return null;
+};
+
+/**
+ * Process appointment payment
+ */
+export const processAppointmentPayment = async (
+  amount: number,
+  patientId: string,
+  hospitalId: string,
+  appointmentId: string,
+  paymentMethod: PaymentMethod = "credit_card"
+): Promise<PaymentResponse | null> => {
+  return processPaymentWithFallback({
+    amount,
+    patientId,
+    hospitalId,
+    paymentMethod,
+    description: `Payment for appointment ${appointmentId}`,
+    metadata: {
+      appointmentId,
+      type: "appointment_fee"
+    }
+  });
 };

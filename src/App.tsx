@@ -23,6 +23,7 @@ import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsAndConditions from "./pages/legal/TermsAndConditions";
 import Sitemap from "./pages/Sitemap";
 import Signup from "./pages/Signup";
+import BookAppointment from "./pages/BookAppointment";
 // Service Pages
 import FinancingService from "./pages/services/FinancingService";
 import PharmaService from "./pages/services/PharmaService";

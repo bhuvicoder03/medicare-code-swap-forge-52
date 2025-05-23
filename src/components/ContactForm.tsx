@@ -3,16 +3,18 @@ import { useState, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import emailjs from 'emailjs-com';
 import { Loader2 } from 'lucide-react';
+import emailjs from 'emailjs-com';
 
-// EmailJS configuration constants
+// EmailJS configuration constants - replace with your own
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID"; 
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || "YOUR_TEMPLATE_ID";
 const EMAILJS_USER_ID = process.env.EMAILJS_USER_ID || "YOUR_USER_ID";
 
 // Initialize emailjs
-emailjs.init(EMAILJS_USER_ID);
+if (EMAILJS_USER_ID !== "YOUR_USER_ID") {
+  emailjs.init(EMAILJS_USER_ID);
+}
 
 interface ContactFormProps {
   className?: string;
@@ -113,8 +115,31 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
     
     try {
       console.log('Sending email with EmailJS...');
-      console.log('Service ID:', EMAILJS_SERVICE_ID);
-      console.log('Template ID:', EMAILJS_TEMPLATE_ID);
+      
+      if (EMAILJS_SERVICE_ID === "YOUR_SERVICE_ID" || 
+          EMAILJS_TEMPLATE_ID === "YOUR_TEMPLATE_ID" || 
+          EMAILJS_USER_ID === "YOUR_USER_ID") {
+        console.warn("EmailJS configuration is not set. Using mock success for demo purposes.");
+        
+        // Simulate a successful submission
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        toast({
+          title: "Message Sent! (Demo)",
+          description: "This is a simulated success. To send real emails, please configure EmailJS.",
+        });
+        
+        // Reset form data
+        setFormData({
+          name: '',
+          email: '',
+          subject: '',
+          message: '',
+        });
+        
+        setSending(false);
+        return;
+      }
       
       // Send email using EmailJS
       const result = await emailjs.send(
@@ -134,7 +159,6 @@ const ContactForm = ({ className = '' }: ContactFormProps) => {
         toast({
           title: "Message Sent!",
           description: "We've received your message and will get back to you soon.",
-          variant: "default",
         });
         
         // Reset form data
