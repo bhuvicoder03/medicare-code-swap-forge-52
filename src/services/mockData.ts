@@ -75,3 +75,71 @@ export const mockTransactions = [
     created_at: "2025-05-12T11:45:00Z"
   }
 ];
+
+// Add missing mock data needed for BookAppointment.tsx
+export const mockHospitals = [
+  {
+    id: "H001",
+    name: "City General Hospital",
+    address: "123 Main Street, Downtown",
+    rating: 4.5,
+    specialties: ["Cardiology", "Orthopedics", "Neurology", "Pediatrics"]
+  },
+  {
+    id: "H002",
+    name: "Metro Healthcare",
+    address: "456 Park Avenue, Midtown",
+    rating: 4.2,
+    specialties: ["Dermatology", "Ophthalmology", "ENT", "Psychiatry"]
+  },
+  {
+    id: "H003",
+    name: "Community Medical Center",
+    address: "789 Garden Road, Westside",
+    rating: 4.0,
+    specialties: ["Family Medicine", "Internal Medicine", "Gynecology", "Pulmonology"]
+  }
+];
+
+export const mockDoctors = [
+  {
+    id: "D001",
+    name: "Dr. Sarah Johnson",
+    hospitalId: "H001",
+    specialty: "Cardiology",
+    qualification: "MD, DM Cardiology",
+    experience: 12,
+    rating: 4.8,
+    availability: ["Monday: 9AM - 2PM", "Wednesday: 10AM - 4PM", "Friday: 11AM - 3PM"]
+  },
+  {
+    id: "D002",
+    name: "Dr. Michael Chen",
+    hospitalId: "H002",
+    specialty: "Dermatology",
+    qualification: "MBBS, MD Dermatology",
+    experience: 8,
+    rating: 4.6,
+    availability: ["Tuesday: 10AM - 6PM", "Thursday: 11AM - 7PM", "Saturday: 9AM - 1PM"]
+  },
+  {
+    id: "D003",
+    name: "Dr. Lisa Wong",
+    hospitalId: "H001",
+    specialty: "Orthopedics",
+    qualification: "MBBS, MS Orthopedics",
+    experience: 15,
+    rating: 4.9,
+    availability: ["Monday: 2PM - 6PM", "Wednesday: 9AM - 12PM", "Thursday: 3PM - 7PM"]
+  },
+  {
+    id: "D004",
+    name: "Dr. James Wilson",
+    hospitalId: "H003",
+    specialty: "Family Medicine",
+    qualification: "MD Family Medicine",
+    experience: 10,
+    rating: 4.7,
+    availability: ["Monday: 9AM - 5PM", "Tuesday: 9AM - 5PM", "Friday: 9AM - 1PM"]
+  }
+];
