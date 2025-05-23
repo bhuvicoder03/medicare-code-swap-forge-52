@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Check, CreditCard, Search, X } from "lucide-react";
+import { Check, CreditCard, Search, X, AlertCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -32,7 +32,16 @@ import {
 } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { processHealthCardPayment, processLoanRequest } from "@/services/transactionService";
+import { 
+  processHealthCardPayment, 
+  processLoanRequest, 
+  processRefund 
+} from "@/services/transactionService";
+import { 
+  processPaymentWithFallback, 
+  PaymentMethod, 
+  PaymentResponse 
+} from "@/services/mockPaymentService";
 
 interface PatientInfo {
   id: string;
@@ -51,6 +60,8 @@ interface PatientInfo {
 const PaymentProcessor = () => {
   const { toast } = useToast();
   const { authState } = useAuth();
+  
+  // State management
   const [searchTerm, setSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
@@ -62,6 +73,8 @@ const PaymentProcessor = () => {
   const [loanTenure, setLoanTenure] = useState("3");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("health_card");
+  const [transactionDetails, setTransactionDetails] = useState<PaymentResponse | null>(null);
 
   // Mock patient data for demo purposes
   const mockPatients = [
@@ -90,6 +103,32 @@ const PaymentProcessor = () => {
       cardStatus: "Active" as const,
       loanLimit: 30000,
       loanBalance: 5000,
+    },
+    {
+      id: "P24680",
+      name: "Amit Kumar",
+      gender: "Male",
+      age: 42,
+      phone: "7654321098",
+      email: "amit.kumar@example.com",
+      cardNumber: "HC-2468-1357-9012",
+      cardBalance: 25000,
+      cardStatus: "Active" as const,
+      loanLimit: 75000,
+      loanBalance: 0,
+    },
+    {
+      id: "P13579",
+      name: "Sneha Gupta",
+      gender: "Female",
+      age: 31,
+      phone: "6543210987",
+      email: "sneha.gupta@example.com",
+      cardNumber: "HC-1357-9024-6813",
+      cardBalance: 5000,
+      cardStatus: "Active" as const,
+      loanLimit: 40000,
+      loanBalance: 15000,
     },
   ];
 
@@ -142,6 +181,16 @@ const PaymentProcessor = () => {
       });
       return;
     }
+    
+    // Check if loan amount exceeds available limit
+    if (paymentTab === "newloan" && amount > (patientInfo.loanLimit - patientInfo.loanBalance)) {
+      toast({
+        variant: "destructive",
+        title: "Loan limit exceeded",
+        description: "The requested loan amount exceeds the patient's available loan limit.",
+      });
+      return;
+    }
 
     setProcessingPayment(true);
 
@@ -150,41 +199,73 @@ const PaymentProcessor = () => {
       const hospitalName = authState.user?.firstName ? 
         `${authState.user.firstName} ${authState.user.lastName} Hospital` : 
         "City General Hospital";
-
-      if (paymentTab === "healthcard") {
-        // Process health card payment
-        await processHealthCardPayment(
-          patientInfo.id,
-          amount,
-          `Payment for ${paymentType}: ${paymentDescription}`,
-          hospitalName
-        );
-      } else {
-        // Process loan request
-        await processLoanRequest(
-          patientInfo.id,
-          amount,
-          loanPurpose,
-          parseInt(loanTenure),
-          hospitalName
-        );
-      }
-
-      // Update patient card balance in the UI
-      if (patientInfo) {
-        setPatientInfo({
-          ...patientInfo,
-          cardBalance: paymentTab === "healthcard" 
-            ? patientInfo.cardBalance - amount 
-            : patientInfo.cardBalance,
-        });
-      }
       
-      setPaymentSuccess(true);
-      toast({
-        title: paymentTab === "healthcard" ? "Payment successful" : "Loan request submitted",
-        description: `₹${amount.toLocaleString()} has been processed successfully.`,
-      });
+      // Determine payment method based on tab
+      const method: PaymentMethod = paymentTab === "healthcard" ? "health_card" : "loan";
+      
+      // Process payment using mock service with fallback mechanism
+      const paymentResponse = await processPaymentWithFallback(
+        {
+          amount: amount,
+          patientId: patientInfo.id,
+          hospitalId: authState.user?.id || undefined,
+          description: paymentTab === "healthcard" 
+            ? `Payment for ${paymentType}: ${paymentDescription}` 
+            : `Loan for ${loanPurpose} - ${loanTenure} months tenure`,
+          paymentMethod: method,
+          metadata: {
+            patientName: patientInfo.name,
+            cardNumber: patientInfo.cardNumber,
+            paymentType: paymentTab,
+            ...(paymentTab === "newloan" ? { loanTenure: parseInt(loanTenure) } : {})
+          }
+        },
+        (response) => {
+          setTransactionDetails(response);
+          
+          // Also try to record in transaction service (legacy method)
+          try {
+            if (paymentTab === "healthcard") {
+              processHealthCardPayment(
+                patientInfo.id,
+                amount,
+                `Payment for ${paymentType}: ${paymentDescription}`,
+                hospitalName
+              );
+            } else {
+              processLoanRequest(
+                patientInfo.id,
+                amount,
+                loanPurpose,
+                parseInt(loanTenure),
+                hospitalName
+              );
+            }
+          } catch (error) {
+            console.warn("Legacy transaction recording failed, but payment was successful", error);
+          }
+        },
+        (error) => {
+          console.error("Payment failed after multiple attempts:", error);
+        }
+      );
+      
+      // Update patient card balance in the UI if payment was successful
+      if (paymentResponse && paymentResponse.success) {
+        if (patientInfo) {
+          setPatientInfo({
+            ...patientInfo,
+            cardBalance: paymentTab === "healthcard" 
+              ? patientInfo.cardBalance - amount 
+              : patientInfo.cardBalance,
+            loanBalance: paymentTab === "newloan"
+              ? patientInfo.loanBalance + amount
+              : patientInfo.loanBalance
+          });
+        }
+        
+        setPaymentSuccess(true);
+      }
     } catch (error: any) {
       console.error("Payment processing error:", error);
       toast({
@@ -194,15 +275,14 @@ const PaymentProcessor = () => {
       });
     } finally {
       setProcessingPayment(false);
-      setPaymentAmount("");
-      setPaymentDescription("");
     }
   };
 
   const handleNewTransaction = () => {
     setPaymentSuccess(false);
-    setSearchTerm("");
-    setPatientInfo(null);
+    setPaymentAmount("");
+    setPaymentDescription("");
+    setTransactionDetails(null);
   };
 
   return (
@@ -470,8 +550,19 @@ const PaymentProcessor = () => {
                     ? `₹${parseFloat(paymentAmount).toLocaleString()} has been charged to the patient's health card.`
                     : `₹${parseFloat(paymentAmount).toLocaleString()} loan request has been submitted successfully.`}
                 </p>
+                {transactionDetails && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg text-left">
+                    <h4 className="font-medium mb-2">Transaction Details</h4>
+                    <p><span className="font-medium">Transaction ID:</span> {transactionDetails.transactionId}</p>
+                    <p><span className="font-medium">Date & Time:</span> {new Date(transactionDetails.timestamp).toLocaleString()}</p>
+                    <p><span className="font-medium">Status:</span> {transactionDetails.status}</p>
+                  </div>
+                )}
               </div>
-              <Button onClick={handleNewTransaction}>Process New Transaction</Button>
+              <div className="flex justify-center gap-4">
+                <Button onClick={handleNewTransaction}>Process New Transaction</Button>
+                <Button variant="outline" onClick={() => window.print()}>Print Receipt</Button>
+              </div>
             </div>
           )}
         </CardContent>
