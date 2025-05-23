@@ -71,12 +71,27 @@ export interface SupportTicket {
 
 export interface Transaction {
   id: string;
-  user_id: string;
+  user_id?: string;
   amount: number;
   type: 'payment' | 'refund' | 'charge';
   description: string;
   status: 'completed' | 'pending' | 'failed';
   created_at: string;
+}
+
+export interface Appointment {
+  id: string;
+  patientName: string;
+  patientId: string;
+  hospitalName: string;
+  hospitalId: string;
+  doctorName: string;
+  specialty: string;
+  date: string;
+  time: string;
+  status: 'pending' | 'completed' | 'confirmed' | 'cancelled';
+  reason: string;
+  notes: string;
 }
 
 // Auth types

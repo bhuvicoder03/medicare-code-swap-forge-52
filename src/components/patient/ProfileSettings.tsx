@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { User, Mail, Phone, Shield, Edit, Save, X, Bell } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ProfileSettingsProps {
   patientData: {
@@ -15,6 +16,7 @@ interface ProfileSettingsProps {
 }
 
 const ProfileSettings = ({ patientData }: ProfileSettingsProps) => {
+  const { updateProfile, authState } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     fullName: patientData.patientName,
@@ -33,12 +35,37 @@ const ProfileSettings = ({ patientData }: ProfileSettingsProps) => {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsEditing(false);
-    toast({
-      title: "Profile Updated",
-      description: "Your profile information has been updated successfully.",
-    });
+    
+    // Split fullName into firstName and lastName
+    const nameParts = formData.fullName.split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+    
+    try {
+      // Update user profile if authenticated
+      if (authState.user) {
+        await updateProfile({
+          ...authState.user,
+          firstName,
+          lastName,
+          email: formData.email
+        });
+      }
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update your profile. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancel = () => {

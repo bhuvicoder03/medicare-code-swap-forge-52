@@ -1,222 +1,116 @@
 
-import { apiRequest } from './api';
-import { mockAppointments, mockDoctors, mockHospitals } from './mockData';
-import { toast } from "@/hooks/use-toast";
+import { apiRequest } from "./api";
+import { Appointment } from "@/types/app.types";
+import { mockAppointments } from "./mockData";
+import { v4 as uuidv4 } from 'uuid';
 
-export interface Appointment {
-  id: string;
-  patientName: string;
-  patientId: string;
-  hospitalName: string;
-  hospitalId: string;
-  doctorName: string;
-  specialty: string;
-  date: string;
-  time: string;
-  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
-  reason: string;
-  notes?: string;
-}
-
-export interface BookAppointmentParams {
-  patientId: string;
-  hospitalId: string;
-  doctorId: string;
-  date: string;
-  time: string;
-  reason: string;
-  notes?: string;
-}
-
-export const fetchAppointments = async (patientId?: string, hospitalId?: string): Promise<Appointment[]> => {
+// Get appointments for a patient
+export const fetchPatientAppointments = async (patientId: string): Promise<Appointment[]> => {
   try {
-    console.log("Fetching appointments...");
-    let endpoint = '/appointments';
+    console.log("Fetching appointments for patient:", patientId);
     
-    if (patientId) {
-      endpoint += `?patientId=${patientId}`;
-    } else if (hospitalId) {
-      endpoint += `?hospitalId=${hospitalId}`;
-    }
+    const response = await apiRequest(`/appointments/patient/${patientId}`);
+    console.log("Appointments retrieved from API:", response);
     
-    const data = await apiRequest(endpoint);
-    console.log('Appointments data received:', data);
-    return data.appointments;
+    // Return the data from the API
+    return response.appointments;
   } catch (error) {
-    console.error('Error fetching appointments, falling back to mock data:', error);
+    console.error("Error fetching appointments, using mock data:", error);
     
-    // Filter mock appointments based on patientId or hospitalId if provided
-    let filteredAppointments = [...mockAppointments];
-    
-    if (patientId) {
-      filteredAppointments = filteredAppointments.filter(apt => apt.patientId === patientId);
-    } else if (hospitalId) {
-      filteredAppointments = filteredAppointments.filter(apt => apt.hospitalId === hospitalId);
-    }
-    
-    return filteredAppointments;
+    // Fallback to mock data
+    return mockAppointments
+      .filter(appointment => appointment.patientId === patientId)
+      .map(appointment => ({
+        ...appointment,
+        status: appointment.status as "pending" | "completed" | "confirmed" | "cancelled"
+      }));
   }
 };
 
-export const bookAppointment = async (params: BookAppointmentParams): Promise<Appointment | null> => {
+// Book a new appointment
+export const bookAppointment = async (appointmentData: any): Promise<Appointment> => {
   try {
-    console.log("Booking appointment:", params);
+    console.log("Booking appointment:", appointmentData);
     
-    // Find doctor and hospital details from mock data (for the API this would come from the backend)
-    const doctor = mockDoctors.find(doc => doc.id === params.doctorId);
-    const hospital = mockHospitals.find(hosp => hosp.id === params.hospitalId);
-    
-    if (!doctor || !hospital) {
-      toast({
-        title: "Booking Failed",
-        description: "Could not find doctor or hospital details.",
-        variant: "destructive",
-      });
-      return null;
-    }
-    
-    // In a real app, we would make an actual API request
-    const appointmentData = await apiRequest('/appointments', {
+    const response = await apiRequest('/appointments', {
       method: 'POST',
-      body: JSON.stringify(params)
+      body: JSON.stringify(appointmentData)
     });
     
-    console.log("Appointment booked successfully:", appointmentData);
-    return appointmentData;
+    console.log("Appointment booked successfully:", response);
+    return response.appointment;
   } catch (error) {
-    console.error('Error booking appointment, simulating successful booking:', error);
+    console.error("Error booking appointment, using mock response:", error);
     
     // Create a mock appointment response
-    const newAppointment: Appointment = {
-      id: `APT-${Math.floor(100000 + Math.random() * 900000)}`,
-      patientId: params.patientId,
-      patientName: "Current User", // In a real app, we would have the patient name
-      hospitalId: params.hospitalId,
-      hospitalName: mockHospitals.find(h => h.id === params.hospitalId)?.name || "Unknown Hospital",
-      doctorName: mockDoctors.find(d => d.id === params.doctorId)?.name || "Unknown Doctor",
-      specialty: mockDoctors.find(d => d.id === params.doctorId)?.specialty || "General Medicine",
-      date: params.date,
-      time: params.time,
-      status: 'confirmed',
-      reason: params.reason,
-      notes: params.notes
+    const mockAppointment: Appointment = {
+      id: uuidv4(),
+      patientName: appointmentData.patientName,
+      patientId: appointmentData.patientId,
+      hospitalName: appointmentData.hospitalName,
+      hospitalId: appointmentData.hospitalId,
+      doctorName: appointmentData.doctorName,
+      specialty: appointmentData.specialty,
+      date: appointmentData.date,
+      time: appointmentData.time,
+      status: "confirmed",
+      reason: appointmentData.reason || "",
+      notes: ""
     };
     
-    toast({
-      title: "Appointment Booked",
-      description: `Your appointment has been successfully booked. Reference ID: ${newAppointment.id}`,
+    // Add to mock data for future reference
+    mockAppointments.push(mockAppointment);
+    
+    return mockAppointment;
+  }
+};
+
+// Cancel an appointment
+export const cancelAppointment = async (appointmentId: string, reason: string): Promise<void> => {
+  try {
+    console.log("Cancelling appointment:", appointmentId);
+    
+    await apiRequest(`/appointments/${appointmentId}/cancel`, {
+      method: 'PUT',
+      body: JSON.stringify({ reason })
     });
     
-    // In a real app, this appointment would be added to the database
-    return newAppointment;
+    console.log("Appointment cancelled successfully");
+  } catch (error) {
+    console.error("Error cancelling appointment, using mock response:", error);
+    
+    // Update mock data
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === appointmentId);
+    if (appointmentIndex !== -1) {
+      mockAppointments[appointmentIndex].status = "cancelled";
+      mockAppointments[appointmentIndex].notes = reason;
+    }
   }
 };
 
-export const cancelAppointment = async (appointmentId: string): Promise<boolean> => {
+// Reschedule an appointment
+export const rescheduleAppointment = async (
+  appointmentId: string, 
+  newDate: string, 
+  newTime: string
+): Promise<void> => {
   try {
-    console.log(`Cancelling appointment ${appointmentId}`);
-    await apiRequest(`/appointments/${appointmentId}/cancel`, { method: 'PUT' });
-    return true;
-  } catch (error) {
-    console.error('Error cancelling appointment, simulating successful cancellation:', error);
+    console.log("Rescheduling appointment:", appointmentId);
     
-    toast({
-      title: "Appointment Cancelled",
-      description: `Your appointment ${appointmentId} has been cancelled.`,
+    await apiRequest(`/appointments/${appointmentId}/reschedule`, {
+      method: 'PUT',
+      body: JSON.stringify({ date: newDate, time: newTime })
     });
     
-    return true;
-  }
-};
-
-export const fetchHospitals = async (): Promise<typeof mockHospitals> => {
-  try {
-    const data = await apiRequest('/hospitals');
-    return data.hospitals;
+    console.log("Appointment rescheduled successfully");
   } catch (error) {
-    console.error('Error fetching hospitals, falling back to mock data:', error);
-    return mockHospitals;
-  }
-};
-
-export const fetchDoctors = async (hospitalId?: string, specialty?: string): Promise<typeof mockDoctors> => {
-  try {
-    let endpoint = '/doctors';
-    const params = new URLSearchParams();
+    console.error("Error rescheduling appointment, using mock response:", error);
     
-    if (hospitalId) params.append('hospitalId', hospitalId);
-    if (specialty) params.append('specialty', specialty);
-    
-    if (params.toString()) {
-      endpoint += `?${params.toString()}`;
+    // Update mock data
+    const appointmentIndex = mockAppointments.findIndex(apt => apt.id === appointmentId);
+    if (appointmentIndex !== -1) {
+      mockAppointments[appointmentIndex].date = newDate;
+      mockAppointments[appointmentIndex].time = newTime;
     }
-    
-    const data = await apiRequest(endpoint);
-    return data.doctors;
-  } catch (error) {
-    console.error('Error fetching doctors, falling back to mock data:', error);
-    
-    let filteredDoctors = [...mockDoctors];
-    
-    if (hospitalId) {
-      filteredDoctors = filteredDoctors.filter(doc => doc.hospitalId === hospitalId);
-    }
-    
-    if (specialty) {
-      filteredDoctors = filteredDoctors.filter(doc => doc.specialty === specialty);
-    }
-    
-    return filteredDoctors;
   }
-};
-
-// Helper function to export appointments to CSV
-export const exportAppointmentsToCSV = (appointments: Appointment[]): void => {
-  if (!appointments.length) {
-    toast({
-      title: "Export Failed",
-      description: "No appointments to export.",
-      variant: "destructive",
-    });
-    return;
-  }
-  
-  // CSV headers
-  const headers = ['Appointment ID', 'Patient Name', 'Hospital', 'Doctor', 'Specialty', 'Date', 'Time', 'Status', 'Reason'];
-  
-  // Convert appointment objects to CSV rows
-  const csvRows = appointments.map(apt => [
-    apt.id,
-    apt.patientName,
-    apt.hospitalName,
-    apt.doctorName,
-    apt.specialty,
-    apt.date,
-    apt.time,
-    apt.status,
-    apt.reason
-  ]);
-  
-  // Combine headers and rows
-  const csvContent = [
-    headers.join(','),
-    ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
-  ].join('\n');
-  
-  // Create a Blob with the CSV content
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  
-  // Create a download link and trigger the download
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `appointments_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  toast({
-    title: "Export Successful",
-    description: `${appointments.length} appointments exported to CSV file.`,
-  });
 };

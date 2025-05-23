@@ -21,7 +21,7 @@ const PatientDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { authState } = useAuth();
+  const { authState, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -56,6 +56,12 @@ const PatientDashboard = () => {
     });
   };
   
+  // Handle logout
+  const handleLogout = () => {
+    signOut();
+    navigate('/login');
+  };
+  
   // Map of tab values to their display names
   const tabTitles: Record<string, string> = {
     "overview": "Dashboard Overview",
@@ -66,6 +72,14 @@ const PatientDashboard = () => {
     "settings": "Profile Settings",
   };
 
+  // Mock patient data for ProfileSettings
+  const patientData = {
+    patientName: authState.user?.firstName ? `${authState.user.firstName} ${authState.user.lastName}` : "Patient User",
+    patientId: authState.user?.id || "P12345",
+    email: authState.user?.email || "patient@example.com",
+    healthCardId: "HC-" + (authState.user?.id || "12345").substring(0, 6)
+  };
+
   return (
     <SidebarWrapper>
       <PatientSidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
@@ -74,6 +88,7 @@ const PatientDashboard = () => {
         <PatientDashboardHeader
           patientName={authState.user?.firstName ? `${authState.user.firstName} ${authState.user.lastName}` : "Patient"}
           toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onLogout={handleLogout}
         />
         
         <main className="p-6">
@@ -135,7 +150,7 @@ const PatientDashboard = () => {
             </TabsContent>
             
             <TabsContent value="settings" className="mt-6">
-              <ProfileSettings />
+              <ProfileSettings patientData={patientData} />
             </TabsContent>
           </Tabs>
         </main>

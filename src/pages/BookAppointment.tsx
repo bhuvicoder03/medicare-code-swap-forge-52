@@ -1,514 +1,601 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from "@/components/ui/form";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Toaster } from "@/components/ui/toaster";
-import { format, addDays, isBefore, startOfToday } from "date-fns";
-import { useForm } from "react-hook-form";
-import { Calendar as CalendarIcon, CheckCircle, Clock, Hospital, Search, User } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { fetchHospitals, fetchDoctors, bookAppointment } from "@/services/appointmentService";
-
-interface BookingForm {
-  hospitalId: string;
-  doctorId: string;
-  date: Date;
-  timeSlot: string;
-  reason: string;
-  notes: string;
-}
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Clock, MapPin, Search, User } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { mockHospitals, mockDoctors } from "@/services/mockData";
+import { bookAppointment } from "@/services/appointmentService";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { processPayment } from "@/services/mockPaymentService";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const BookAppointment = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { authState } = useAuth();
-  const [hospitals, setHospitals] = useState<any[]>([]);
-  const [doctors, setDoctors] = useState<any[]>([]);
-  const [specialties, setSpecialties] = useState<string[]>([]);
-  const [selectedSpecialty, setSelectedSpecialty] = useState<string>("");
-  const [loading, setLoading] = useState({
-    hospitals: false,
-    doctors: false,
-    booking: false
-  });
-  
-  const form = useForm<BookingForm>({
-    defaultValues: {
-      hospitalId: "",
-      doctorId: "",
-      date: new Date(),
-      timeSlot: "",
-      reason: "",
-      notes: ""
+  const [step, setStep] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedHospital, setSelectedHospital] = useState<any | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<any | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Time slots
+  const morningSlots = ["09:00 AM", "10:00 AM", "11:00 AM"];
+  const afternoonSlots = ["01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"];
+  const eveningSlots = ["05:00 PM", "06:00 PM", "07:00 PM"];
+
+  useEffect(() => {
+    // Filter hospitals or doctors based on search query
+    if (searchQuery) {
+      const results = mockHospitals.filter(
+        hospital =>
+          hospital.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          hospital.specialties.some(specialty =>
+            specialty.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+      );
+      setSearchResults(results);
+    } else {
+      setSearchResults(mockHospitals);
     }
-  });
-  
-  const hospitalId = form.watch("hospitalId");
-  const selectedDate = form.watch("date");
-  
+  }, [searchQuery]);
+
   useEffect(() => {
-    const loadHospitals = async () => {
-      setLoading(prev => ({ ...prev, hospitals: true }));
-      try {
-        const hospitalsData = await fetchHospitals();
-        setHospitals(hospitalsData);
-        
-        // Extract unique specialties
-        const allSpecialties = hospitalsData.flatMap(hospital => hospital.specialties);
-        const uniqueSpecialties = [...new Set(allSpecialties)];
-        setSpecialties(uniqueSpecialties);
-      } catch (error) {
-        console.error("Error loading hospitals:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load hospitals. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(prev => ({ ...prev, hospitals: false }));
-      }
-    };
-    
-    loadHospitals();
-  }, [toast]);
-  
+    // Filter doctors by selected hospital
+    if (selectedHospital) {
+      const doctors = mockDoctors.filter(
+        doctor => doctor.hospitalId === selectedHospital.id
+      );
+      setAvailableDoctors(doctors);
+    }
+  }, [selectedHospital]);
+
+  // Check if user is logged in
   useEffect(() => {
-    const loadDoctors = async () => {
-      if (!hospitalId && !selectedSpecialty) {
-        setDoctors([]);
-        return;
-      }
-      
-      setLoading(prev => ({ ...prev, doctors: true }));
-      try {
-        const doctorsData = await fetchDoctors(
-          hospitalId || undefined,
-          selectedSpecialty || undefined
-        );
-        setDoctors(doctorsData);
-      } catch (error) {
-        console.error("Error loading doctors:", error);
-      } finally {
-        setLoading(prev => ({ ...prev, doctors: false }));
-      }
-    };
-    
-    loadDoctors();
-  }, [hospitalId, selectedSpecialty]);
-  
-  // Filter out past dates
-  const isDateAvailable = (date: Date) => {
-    return !isBefore(date, startOfToday());
-  };
-  
-  // Get time slots based on selected doctor
-  const getAvailableTimeSlots = () => {
-    const doctorId = form.getValues("doctorId");
-    if (!doctorId) return [];
-    
-    // In a real app, this would be dynamic based on the doctor's schedule
-    const doctor = doctors.find(doc => doc.id === doctorId);
-    if (!doctor) return [];
-    
-    // For demo purposes, create some time slots
-    return [
-      "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", 
-      "11:00 AM", "11:30 AM", "02:00 PM", "02:30 PM",
-      "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM"
-    ];
-  };
-  
-  const onSubmit = async (data: BookingForm) => {
-    if (!authState.isAuthenticated) {
+    if (!authState.user) {
       toast({
-        title: "Authentication Required",
-        description: "Please login to book an appointment.",
-        variant: "destructive"
+        title: "Login Required",
+        description: "Please log in to book an appointment.",
+        variant: "destructive",
+      });
+      navigate("/login", { state: { from: "/book-appointment" } });
+    }
+  }, [authState.user, navigate, toast]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Filter hospitals based on search query
+    const results = mockHospitals.filter(
+      hospital =>
+        hospital.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        hospital.specialties.some(specialty =>
+          specialty.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+    );
+    setSearchResults(results);
+  };
+
+  const handleHospitalSelect = (hospital: any) => {
+    setSelectedHospital(hospital);
+    setSelectedDoctor(null);
+    setSelectedDate(undefined);
+    setSelectedTimeSlot(null);
+    setStep(2);
+  };
+
+  const handleDoctorSelect = (doctor: any) => {
+    setSelectedDoctor(doctor);
+    setStep(3);
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+  };
+
+  const handleTimeSlotSelect = (timeSlot: string) => {
+    setSelectedTimeSlot(timeSlot);
+    setStep(4);
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!authState.user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to book an appointment.",
+        variant: "destructive",
       });
       navigate("/login");
       return;
     }
-    
-    setLoading(prev => ({ ...prev, booking: true }));
-    
+
+    setIsLoading(true);
+
     try {
-      const appointment = await bookAppointment({
-        patientId: authState.user?.id || "anonymous",
-        hospitalId: data.hospitalId,
-        doctorId: data.doctorId,
-        date: format(data.date, "yyyy-MM-dd"),
-        time: data.timeSlot,
-        reason: data.reason,
-        notes: data.notes
+      // Process payment first
+      const paymentResult = await processPayment({
+        amount: 500, // Consultation fee
+        currency: "INR",
+        method: paymentMethod,
+        description: `Appointment with ${selectedDoctor.name} on ${format(selectedDate!, 'PPP')}`,
+        user_id: authState.user.id
       });
-      
-      if (appointment) {
-        toast({
-          title: "Appointment Booked",
-          description: `Your appointment has been successfully scheduled for ${format(data.date, "PPP")} at ${data.timeSlot}.`,
-        });
-        
-        // Navigate to appointments page in the dashboard
-        navigate("/patient-dashboard?tab=appointments");
+
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.message || "Payment failed");
       }
-    } catch (error) {
-      console.error("Error booking appointment:", error);
+
+      // Then book appointment
+      const appointmentData = {
+        doctorId: selectedDoctor.id,
+        doctorName: selectedDoctor.name,
+        hospitalId: selectedHospital.id,
+        hospitalName: selectedHospital.name,
+        patientId: authState.user.id,
+        patientName: `${authState.user.firstName || ""} ${authState.user.lastName || ""}`.trim(),
+        date: format(selectedDate!, 'yyyy-MM-dd'),
+        time: selectedTimeSlot!,
+        reason: reason,
+        specialty: selectedDoctor.specialty
+      };
+
+      await bookAppointment(appointmentData);
+
+      toast({
+        title: "Appointment Booked",
+        description: `Your appointment with ${selectedDoctor.name} has been scheduled successfully.`,
+        duration: 5000,
+      });
+
+      navigate("/patient-dashboard?tab=appointments");
+    } catch (error: any) {
+      console.error("Booking error:", error);
       toast({
         title: "Booking Failed",
-        description: "There was a problem booking your appointment. Please try again.",
-        variant: "destructive"
+        description: error.message || "Could not book appointment. Please try again.",
+        variant: "destructive",
       });
     } finally {
-      setLoading(prev => ({ ...prev, booking: false }));
+      setIsLoading(false);
+      setIsConfirmDialogOpen(false);
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (step) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-semibold">Choose a Hospital</h2>
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search by hospital name or specialty"
+                  className="pl-9"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Button type="submit">Search</Button>
+            </form>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              {searchResults.length > 0 ? (
+                searchResults.map((hospital) => (
+                  <Card
+                    key={hospital.id}
+                    className="cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => handleHospitalSelect(hospital)}
+                  >
+                    <CardHeader className="pb-2">
+                      <CardTitle>{hospital.name}</CardTitle>
+                      <CardDescription>{hospital.address}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center text-sm">
+                        <MapPin className="h-4 w-4 mr-1 text-gray-500" />
+                        {hospital.address}
+                      </div>
+                      <div className="mt-4">
+                        <span className="text-sm font-medium">Specialties: </span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {hospital.specialties.map((specialty: string, index: number) => (
+                            <span
+                              key={index}
+                              className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full"
+                            >
+                              {specialty}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pt-0">
+                      <span className="flex items-center text-sm">
+                        Rating: {hospital.rating}{" "}
+                        <span className="text-yellow-500 ml-1">★</span>
+                      </span>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-2 text-center py-10">
+                  <p>No hospitals found matching your search.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Choose a Doctor</h2>
+              <Button variant="outline" onClick={() => setStep(1)}>
+                Change Hospital
+              </Button>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h3 className="font-medium mb-1">{selectedHospital?.name}</h3>
+              <div className="flex items-center text-sm">
+                <MapPin className="h-4 w-4 mr-1 text-gray-500" />
+                {selectedHospital?.address}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableDoctors.length > 0 ? (
+                availableDoctors.map((doctor) => (
+                  <Card
+                    key={doctor.id}
+                    className="cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => handleDoctorSelect(doctor)}
+                  >
+                    <CardHeader className="pb-2">
+                      <CardTitle>{doctor.name}</CardTitle>
+                      <CardDescription>{doctor.specialty}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="text-sm">
+                          <span className="font-medium">Qualification: </span>
+                          {doctor.qualification}
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-medium">Experience: </span>
+                          {doctor.experience} years
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-medium">Availability: </span>
+                          <ul className="list-disc pl-5 mt-1">
+                            {doctor.availability.map((time: string, index: number) => (
+                              <li key={index}>{time}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pt-0">
+                      <span className="flex items-center text-sm">
+                        Rating: {doctor.rating}{" "}
+                        <span className="text-yellow-500 ml-1">★</span>
+                      </span>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-2 text-center py-10">
+                  <p>No doctors available at this hospital.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Choose Date & Time</h2>
+              <Button variant="outline" onClick={() => setStep(2)}>
+                Change Doctor
+              </Button>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h3 className="font-medium mb-1">
+                {selectedDoctor?.name} ({selectedDoctor?.specialty})
+              </h3>
+              <div className="text-sm">
+                <span className="font-medium">Availability: </span>
+                <ul className="list-disc pl-5 mt-1">
+                  {selectedDoctor?.availability.map((time: string, index: number) => (
+                    <li key={index}>{time}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-medium mb-4">Select Date</h3>
+                <div className="border rounded-md">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    disabled={(date) => {
+                      // Disable past dates
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium mb-4">Select Time</h3>
+                {selectedDate ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Morning</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {morningSlots.map((slot) => (
+                          <Button
+                            key={slot}
+                            variant={selectedTimeSlot === slot ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleTimeSlotSelect(slot)}
+                            className="justify-start"
+                          >
+                            <Clock className="h-3 w-3 mr-1" /> {slot}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Afternoon</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {afternoonSlots.map((slot) => (
+                          <Button
+                            key={slot}
+                            variant={selectedTimeSlot === slot ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleTimeSlotSelect(slot)}
+                            className="justify-start"
+                          >
+                            <Clock className="h-3 w-3 mr-1" /> {slot}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Evening</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {eveningSlots.map((slot) => (
+                          <Button
+                            key={slot}
+                            variant={selectedTimeSlot === slot ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleTimeSlotSelect(slot)}
+                            className="justify-start"
+                          >
+                            <Clock className="h-3 w-3 mr-1" /> {slot}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-40 border rounded-md bg-gray-50">
+                    <p className="text-gray-500">Please select a date first</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">Appointment Details</h2>
+              <Button variant="outline" onClick={() => setStep(3)}>
+                Change Date & Time
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Appointment Summary</CardTitle>
+                <CardDescription>
+                  Review your appointment details before confirming
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Doctor Details</h3>
+                    <div className="bg-gray-50 p-3 rounded-md space-y-2">
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>{selectedDoctor?.name}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                          {selectedDoctor?.specialty}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Hospital Details</h3>
+                    <div className="bg-gray-50 p-3 rounded-md space-y-2">
+                      <div>{selectedHospital?.name}</div>
+                      <div className="flex items-center text-sm">
+                        <MapPin className="h-4 w-4 mr-1 text-gray-500" />
+                        {selectedHospital?.address}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Date & Time</h3>
+                    <div className="bg-gray-50 p-3 rounded-md space-y-2">
+                      <div className="flex items-center">
+                        <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>
+                          {selectedDate &&
+                            format(selectedDate, "EEEE, MMMM d, yyyy")}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>{selectedTimeSlot}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Consultation Fee</h3>
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <div className="text-lg font-semibold">₹500</div>
+                      <div className="text-xs text-gray-500">
+                        (May vary based on actual consultation)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <Label htmlFor="reason">Reason for Visit</Label>
+                  <Textarea
+                    id="reason"
+                    placeholder="Please describe your symptoms or reason for consultation"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <Label>Payment Method</Label>
+                  <RadioGroup
+                    defaultValue="card"
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                    className="mt-2 space-y-3"
+                  >
+                    <div className="flex items-center space-x-2 border rounded-md p-3">
+                      <RadioGroupItem value="card" id="card" />
+                      <Label htmlFor="card" className="flex-1">
+                        Credit/Debit Card
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 border rounded-md p-3">
+                      <RadioGroupItem value="upi" id="upi" />
+                      <Label htmlFor="upi" className="flex-1">
+                        UPI
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 border rounded-md p-3">
+                      <RadioGroupItem value="healthcard" id="healthcard" />
+                      <Label htmlFor="healthcard" className="flex-1">
+                        Health Card
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  className="w-full" 
+                  onClick={() => setIsConfirmDialogOpen(true)}
+                >
+                  Confirm & Pay ₹500
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
   return (
-    <div className="container mx-auto py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <>
+      <Navbar />
+      <div className="container max-w-6xl mx-auto py-6 px-4">
         <h1 className="text-3xl font-bold mb-6">Book an Appointment</h1>
         
-        <Card className="mb-8">
-          <CardHeader className="bg-gradient-to-r from-brand-600 to-brand-800 text-white">
-            <CardTitle>Find the Right Doctor</CardTitle>
-            <CardDescription className="text-brand-100">
-              Book an appointment with top healthcare specialists
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="pt-6">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Hospital Selection */}
-                  <FormField
-                    control={form.control}
-                    name="hospitalId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hospital</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                          disabled={loading.hospitals}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select hospital" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {hospitals.map(hospital => (
-                              <SelectItem key={hospital.id} value={hospital.id}>
-                                {hospital.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Choose a hospital for your appointment
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Specialty Filter */}
-                  <div>
-                    <FormLabel>Specialty (Optional)</FormLabel>
-                    <Select 
-                      onValueChange={setSelectedSpecialty} 
-                      value={selectedSpecialty}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Filter by specialty" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">All Specialties</SelectItem>
-                        {specialties.map(specialty => (
-                          <SelectItem key={specialty} value={specialty}>
-                            {specialty}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Filter doctors by medical specialty
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Doctor Selection */}
-                <FormField
-                  control={form.control}
-                  name="doctorId"
-                  rules={{ required: "Please select a doctor" }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Doctor</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                        disabled={loading.doctors || (!hospitalId && !selectedSpecialty)}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select doctor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {doctors.length > 0 ? (
-                            doctors.map(doctor => (
-                              <SelectItem key={doctor.id} value={doctor.id}>
-                                {doctor.name} - {doctor.specialty} ({doctor.experience} yrs)
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem disabled value="none">
-                              No doctors available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Select a healthcare professional
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Date Selection */}
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    rules={{ required: "Please select a date" }}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Appointment Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => !isDateAvailable(date) || date > addDays(new Date(), 30)}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormDescription>
-                          Choose from available dates (next 30 days)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Time Slot Selection */}
-                  <FormField
-                    control={form.control}
-                    name="timeSlot"
-                    rules={{ required: "Please select a time slot" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Time Slot</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                          disabled={!form.getValues("doctorId")}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select time" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {getAvailableTimeSlots().map(slot => (
-                              <SelectItem key={slot} value={slot}>
-                                {slot}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Select an available time slot
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                {/* Reason for Visit */}
-                <FormField
-                  control={form.control}
-                  name="reason"
-                  rules={{ required: "Please provide a reason for visit" }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reason for Visit</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Brief description of your medical concern" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Briefly describe your symptoms or reason for consultation
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {/* Additional Notes */}
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Additional Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Any additional information for the doctor" 
-                          className="resize-none" 
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Include relevant medical history or specific concerns
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <CardFooter className="px-0 pb-0 pt-6">
-                  <div className="flex flex-col sm:flex-row gap-4 w-full">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="w-full sm:w-auto"
-                      onClick={() => navigate(-1)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      className="w-full sm:w-auto bg-brand-600 hover:bg-brand-700" 
-                      disabled={loading.booking}
-                    >
-                      {loading.booking ? (
-                        <>
-                          <span className="animate-spin mr-2">■</span>
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Book Appointment
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardFooter>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center text-center p-6">
-              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center mb-4">
-                <Search className="h-6 w-6 text-brand-600" />
-              </div>
-              <h3 className="font-medium text-lg mb-2">Find a Doctor</h3>
-              <p className="text-muted-foreground text-sm">
-                Choose from our network of specialized healthcare professionals
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center text-center p-6">
-              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center mb-4">
-                <Calendar className="h-6 w-6 text-brand-600" />
-              </div>
-              <h3 className="font-medium text-lg mb-2">Book Your Slot</h3>
-              <p className="text-muted-foreground text-sm">
-                Select a convenient date and time for your appointment
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center text-center p-6">
-              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center mb-4">
-                <Hospital className="h-6 w-6 text-brand-600" />
-              </div>
-              <h3 className="font-medium text-lg mb-2">Visit Hospital</h3>
-              <p className="text-muted-foreground text-sm">
-                Get quality care from our partner hospitals across the country
-              </p>
-            </CardContent>
-          </Card>
+        <div className="mb-6">
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div
+              className="bg-primary h-2.5 rounded-full transition-all duration-300"
+              style={{ width: `${(step / 4) * 100}%` }}
+            ></div>
+          </div>
         </div>
+
+        {renderStepContent()}
+
+        <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Appointment</DialogTitle>
+              <DialogDescription>
+                You're about to book an appointment with {selectedDoctor?.name} on{" "}
+                {selectedDate && format(selectedDate, "MMMM d, yyyy")} at {selectedTimeSlot}.
+                A consultation fee of ₹500 will be charged.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsConfirmDialogOpen(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmBooking}
+                disabled={isLoading}
+              >
+                {isLoading ? "Processing..." : "Confirm & Pay"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-      <Toaster />
-    </div>
+      <Footer />
+    </>
   );
 };
 
