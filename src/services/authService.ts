@@ -18,8 +18,9 @@ export const loginUser = async (email: string, password: string) => {
       throw new Error('No authentication token received');
     }
     
-    // Store the token
+    // Store the token with both keys for compatibility
     localStorage.setItem('token', data.token);
+    localStorage.setItem('auth_token', data.token);
     
     // Get user data
     const userData = await getCurrentUser();
@@ -58,8 +59,9 @@ export const registerUser = async (
       throw new Error('No authentication token received');
     }
     
-    // Store the token
+    // Store the token with both keys for compatibility
     localStorage.setItem('token', data.token);
+    localStorage.setItem('auth_token', data.token);
     
     // Get user data
     const userData = await getCurrentUser();
@@ -92,9 +94,10 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
 export const logoutUser = () => {
   console.log('Logging out user');
   localStorage.removeItem('token');
+  localStorage.removeItem('auth_token');
 };
 
 export const checkAuthToken = (): boolean => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
   return !!token;
 };

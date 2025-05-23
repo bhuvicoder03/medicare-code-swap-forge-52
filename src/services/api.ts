@@ -14,13 +14,17 @@ export const apiRequest = async (
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers
-    };
+    } as HeadersInit;
     
-    // Add token if available
-    const token = localStorage.getItem('auth_token');
+    // Add token if available - check both possible token keys
+    const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+      headers['x-auth-token'] = token; // Add token as x-auth-token as well for compatibility
     }
+    
+    console.log('Making API request to:', url);
+    console.log('With headers:', headers);
     
     // Make the request
     const response = await fetch(url, {
