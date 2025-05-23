@@ -1,6 +1,6 @@
 
 // API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://rimedicare-phase1.onrender.com/api';
+const API_BASE_URL ='https://rimedicare-phase1.onrender.com/api';
 
 // Generic API request function
 export const apiRequest = async (
