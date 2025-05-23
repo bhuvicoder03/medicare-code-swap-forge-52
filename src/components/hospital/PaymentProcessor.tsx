@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Check, CreditCard, Search, X, AlertCircle } from "lucide-react";
 import {
@@ -73,7 +72,7 @@ const PaymentProcessor = () => {
   const [loanTenure, setLoanTenure] = useState("3");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("health_card");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("healthcard");
   const [transactionDetails, setTransactionDetails] = useState<PaymentResponse | null>(null);
 
   // Mock patient data for demo purposes
@@ -201,54 +200,48 @@ const PaymentProcessor = () => {
         "City General Hospital";
       
       // Determine payment method based on tab
-      const method: PaymentMethod = paymentTab === "healthcard" ? "health_card" : "loan";
+      const method: PaymentMethod = paymentTab === "healthcard" ? "healthcard" : "loan";
       
       // Process payment using mock service with fallback mechanism
-      const paymentResponse = await processPaymentWithFallback(
-        {
-          amount: amount,
-          patientId: patientInfo.id,
-          hospitalId: authState.user?.id || undefined,
-          description: paymentTab === "healthcard" 
-            ? `Payment for ${paymentType}: ${paymentDescription}` 
-            : `Loan for ${loanPurpose} - ${loanTenure} months tenure`,
-          paymentMethod: method,
-          metadata: {
-            patientName: patientInfo.name,
-            cardNumber: patientInfo.cardNumber,
-            paymentType: paymentTab,
-            ...(paymentTab === "newloan" ? { loanTenure: parseInt(loanTenure) } : {})
-          }
-        },
-        (response) => {
-          setTransactionDetails(response);
-          
-          // Also try to record in transaction service (legacy method)
-          try {
-            if (paymentTab === "healthcard") {
-              processHealthCardPayment(
-                patientInfo.id,
-                amount,
-                `Payment for ${paymentType}: ${paymentDescription}`,
-                hospitalName
-              );
-            } else {
-              processLoanRequest(
-                patientInfo.id,
-                amount,
-                loanPurpose,
-                parseInt(loanTenure),
-                hospitalName
-              );
-            }
-          } catch (error) {
-            console.warn("Legacy transaction recording failed, but payment was successful", error);
-          }
-        },
-        (error) => {
-          console.error("Payment failed after multiple attempts:", error);
+      const paymentResponse = await processPaymentWithFallback({
+        amount: amount,
+        patientId: patientInfo.id,
+        hospitalId: authState.user?.id,
+        description: paymentTab === "healthcard" 
+          ? `Payment for ${paymentType}: ${paymentDescription}` 
+          : `Loan for ${loanPurpose} - ${loanTenure} months tenure`,
+        paymentMethod: method,
+        metadata: {
+          patientName: patientInfo.name,
+          cardNumber: patientInfo.cardNumber,
+          paymentType: paymentTab,
+          ...(paymentTab === "newloan" ? { loanTenure: parseInt(loanTenure) } : {})
         }
-      );
+      });
+      
+      setTransactionDetails(paymentResponse);
+      
+      // Also try to record in transaction service (legacy method)
+      try {
+        if (paymentTab === "healthcard") {
+          processHealthCardPayment(
+            patientInfo.id,
+            amount,
+            `Payment for ${paymentType}: ${paymentDescription}`,
+            hospitalName
+          );
+        } else {
+          processLoanRequest(
+            patientInfo.id,
+            amount,
+            loanPurpose,
+            parseInt(loanTenure),
+            hospitalName
+          );
+        }
+      } catch (error) {
+        console.warn("Legacy transaction recording failed, but payment was successful", error);
+      }
       
       // Update patient card balance in the UI if payment was successful
       if (paymentResponse && paymentResponse.success) {
@@ -554,8 +547,8 @@ const PaymentProcessor = () => {
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg text-left">
                     <h4 className="font-medium mb-2">Transaction Details</h4>
                     <p><span className="font-medium">Transaction ID:</span> {transactionDetails.transactionId}</p>
-                    <p><span className="font-medium">Date & Time:</span> {new Date(transactionDetails.timestamp).toLocaleString()}</p>
-                    <p><span className="font-medium">Status:</span> {transactionDetails.status}</p>
+                    <p><span className="font-medium">Date & Time:</span> {transactionDetails.timestamp ? new Date(transactionDetails.timestamp).toLocaleString() : new Date().toLocaleString()}</p>
+                    <p><span className="font-medium">Status:</span> {transactionDetails.status || 'completed'}</p>
                   </div>
                 )}
               </div>

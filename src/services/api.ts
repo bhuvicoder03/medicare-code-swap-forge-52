@@ -1,44 +1,43 @@
 
-// API service with improved error handling
-const API_URL = 'https://rimedicare-phase1.onrender.com/api';
+// API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-export const getAuthToken = () => localStorage.getItem('token');
-
-export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const token = getAuthToken();
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'x-auth-token': token } : {}),
-    ...(options.headers || {})
-  };
-
+// Generic API request function
+export const apiRequest = async (
+  endpoint: string, 
+  options: RequestInit = {}
+) => {
   try {
-    console.log(`Making API request to: ${API_URL}${endpoint}`);
+    const url = `${API_BASE_URL}${endpoint}`;
     
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    // Set default headers
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+    
+    // Add token if available
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Make the request
+    const response = await fetch(url, {
       ...options,
       headers
     });
-
-    const contentType = response.headers.get('content-type');
-    let responseData;
     
-    if (contentType && contentType.includes('application/json')) {
-      responseData = await response.json();
-    } else {
-      responseData = await response.text();
-    }
-    
+    // Check if response is ok
     if (!response.ok) {
-      console.error('API error response:', responseData);
-      throw new Error(responseData.msg || responseData.message || responseData || 'API request failed');
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `API request failed with status ${response.status}`);
     }
     
-    console.log('API request successful:', { endpoint, status: response.status });
-    return responseData;
+    // Return json response
+    return await response.json();
   } catch (error) {
-    console.error('API request error:', error);
+    console.error(`API request failed: ${error}`);
     throw error;
   }
 };
