@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Check, CreditCard, Search, X, AlertCircle } from "lucide-react";
 import {
@@ -31,16 +32,7 @@ import {
 } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  processHealthCardPayment, 
-  processLoanRequest, 
-  processRefund 
-} from "@/services/transactionService";
-import { 
-  processPaymentWithFallback, 
-  PaymentMethod, 
-  PaymentResponse 
-} from "@/services/mockPaymentService";
+import { securePaymentService, PaymentResponse } from "@/services/securePaymentService";
 
 interface PatientInfo {
   id: string;
@@ -72,7 +64,6 @@ const PaymentProcessor = () => {
   const [loanTenure, setLoanTenure] = useState("3");
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("healthcard");
   const [transactionDetails, setTransactionDetails] = useState<PaymentResponse | null>(null);
 
   // Mock patient data for demo purposes
@@ -194,57 +185,31 @@ const PaymentProcessor = () => {
     setProcessingPayment(true);
 
     try {
-      // We should have the actual hospital name from auth state
-      const hospitalName = authState.user?.firstName ? 
-        `${authState.user.firstName} ${authState.user.lastName} Hospital` : 
-        "City General Hospital";
+      let paymentResponse: PaymentResponse;
       
-      // Determine payment method based on tab
-      const method: PaymentMethod = paymentTab === "healthcard" ? "healthcard" : "loan";
-      
-      // Process payment using mock service with fallback mechanism
-      const paymentResponse = await processPaymentWithFallback({
-        amount: amount,
-        patientId: patientInfo.id,
-        hospitalId: authState.user?.id,
-        description: paymentTab === "healthcard" 
-          ? `Payment for ${paymentType}: ${paymentDescription}` 
-          : `Loan for ${loanPurpose} - ${loanTenure} months tenure`,
-        paymentMethod: method,
-        metadata: {
-          patientName: patientInfo.name,
-          cardNumber: patientInfo.cardNumber,
-          paymentType: paymentTab,
-          ...(paymentTab === "newloan" ? { loanTenure: parseInt(loanTenure) } : {})
-        }
-      });
-      
-      setTransactionDetails(paymentResponse);
-      
-      // Also try to record in transaction service (legacy method)
-      try {
-        if (paymentTab === "healthcard") {
-          processHealthCardPayment(
-            patientInfo.id,
-            amount,
-            `Payment for ${paymentType}: ${paymentDescription}`,
-            hospitalName
-          );
-        } else {
-          processLoanRequest(
-            patientInfo.id,
-            amount,
-            loanPurpose,
-            parseInt(loanTenure),
-            hospitalName
-          );
-        }
-      } catch (error) {
-        console.warn("Legacy transaction recording failed, but payment was successful", error);
+      if (paymentTab === "healthcard") {
+        // Process health card payment through secure server-side endpoint
+        paymentResponse = await securePaymentService.processHealthCardPayment({
+          patientId: patientInfo.id,
+          amount: amount,
+          description: `Payment for ${paymentType}: ${paymentDescription}`,
+          paymentType: paymentType
+        });
+      } else {
+        // Process loan request through secure server-side endpoint
+        paymentResponse = await securePaymentService.processLoanRequest({
+          patientId: patientInfo.id,
+          amount: amount,
+          purpose: loanPurpose,
+          tenure: parseInt(loanTenure),
+          description: paymentDescription
+        });
       }
       
-      // Update patient card balance in the UI if payment was successful
-      if (paymentResponse && paymentResponse.success) {
+      if (paymentResponse.success) {
+        setTransactionDetails(paymentResponse);
+        
+        // Update patient card balance in the UI if payment was successful
         if (patientInfo) {
           setPatientInfo({
             ...patientInfo,
@@ -258,6 +223,13 @@ const PaymentProcessor = () => {
         }
         
         setPaymentSuccess(true);
+        
+        toast({
+          title: "Payment Successful",
+          description: `Transaction completed successfully. Transaction ID: ${paymentResponse.transactionId}`,
+        });
+      } else {
+        throw new Error(paymentResponse.error || 'Payment processing failed');
       }
     } catch (error: any) {
       console.error("Payment processing error:", error);
@@ -282,9 +254,9 @@ const PaymentProcessor = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Process Payment</CardTitle>
+          <CardTitle>Process Payment (Secure Server-Side)</CardTitle>
           <CardDescription>
-            Collect payments using Health Card or initiate a new loan request
+            Collect payments using Health Card or initiate a new loan request - All payments processed securely on the server
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -446,7 +418,7 @@ const PaymentProcessor = () => {
                           processingPayment
                         }
                       >
-                        {processingPayment ? "Processing..." : "Process Payment"}
+                        {processingPayment ? "Processing Securely..." : "Process Payment (Server-Side)"}
                       </Button>
                     </TabsContent>
                     <TabsContent value="newloan" className="space-y-4 pt-4">
@@ -521,7 +493,7 @@ const PaymentProcessor = () => {
                           processingPayment
                         }
                       >
-                        {processingPayment ? "Processing..." : "Submit Loan Request"}
+                        {processingPayment ? "Processing Securely..." : "Submit Loan Request (Server-Side)"}
                       </Button>
                     </TabsContent>
                   </Tabs>
@@ -537,7 +509,7 @@ const PaymentProcessor = () => {
                 <Check className="h-8 w-8 text-green-600" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-gray-900">Payment Successful</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Payment Successful (Server-Side)</h3>
                 <p className="text-gray-500">
                   {paymentTab === "healthcard" 
                     ? `₹${parseFloat(paymentAmount).toLocaleString()} has been charged to the patient's health card.`
@@ -547,8 +519,9 @@ const PaymentProcessor = () => {
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg text-left">
                     <h4 className="font-medium mb-2">Transaction Details</h4>
                     <p><span className="font-medium">Transaction ID:</span> {transactionDetails.transactionId}</p>
-                    <p><span className="font-medium">Date & Time:</span> {transactionDetails.timestamp ? new Date(transactionDetails.timestamp).toLocaleString() : new Date().toLocaleString()}</p>
-                    <p><span className="font-medium">Status:</span> {transactionDetails.status || 'completed'}</p>
+                    <p><span className="font-medium">Date & Time:</span> {new Date().toLocaleString()}</p>
+                    <p><span className="font-medium">Status:</span> Completed (Server-Side)</p>
+                    <p><span className="font-medium">Security:</span> Processed Securely on Server</p>
                   </div>
                 )}
               </div>
