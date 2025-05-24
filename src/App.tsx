@@ -94,6 +94,8 @@ const App = () => (
 
               {/* Protected Dashboard Routes */}
 
+              {/*Patient dashboard routes*/}
+
               <Route
                 path="/patient-dashboard/*"
                 element={
@@ -102,6 +104,15 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/book-appointment/*"
+                element={
+                  <ProtectedRoute allowedRoles={["patient"]}>
+                    <BookAppointment />
+                  </ProtectedRoute>
+                }
+              />
+
 
               <Route
                 path="/hospital-dashboard/*"

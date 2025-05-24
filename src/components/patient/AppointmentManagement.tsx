@@ -1,41 +1,25 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, Delete, Edit, MapPin, User, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, Delete, Edit, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchPatientAppointments, cancelAppointment } from "@/services/appointmentService";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useNavigate } from "react-router-dom";
-
-// Define appointment type
-interface Appointment {
-  id: string;
-  patientName: string;
-  patientId: string;
-  hospitalName: string;
-  hospitalId: string;
-  doctorName: string;
-  specialty: string;
-  date: string;
-  time: string;
-  status: "pending" | "completed" | "confirmed" | "cancelled";
-  reason: string;
-  notes: string;
-}
+import BookAppointmentDialog from "./BookAppointmentDialogue"; // Import the new dialog component
+import { Appointment } from "@/types/app.types";
 
 const AppointmentManagement = () => {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const { authState } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [bookDialogOpen, setBookDialogOpen] = useState(false); // State for book dialog
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -44,7 +28,6 @@ const AppointmentManagement = () => {
           const data = await fetchPatientAppointments(authState.user.id);
           setAppointments(data);
         } else {
-          // Handle the case when user ID is not available
           console.error("User ID not available");
           setAppointments([]);
         }
@@ -64,7 +47,11 @@ const AppointmentManagement = () => {
   }, [authState.user, toast]);
 
   const handleBookAppointment = () => {
-    navigate("/book-appointment");
+    setBookDialogOpen(true); // Open the dialog
+  };
+
+  const handleAppointmentBooked = (newAppointment: Appointment) => {
+    setAppointments((prev) => [...prev, newAppointment]); // Add new appointment to list
   };
 
   const getStatusBadge = (status: string) => {
@@ -92,20 +79,15 @@ const AppointmentManagement = () => {
 
     try {
       await cancelAppointment(selectedAppointment.id, cancelReason);
-      
-      // Update local state
-      setAppointments(appointments.map(apt => 
-        apt.id === selectedAppointment.id 
-          ? { ...apt, status: "cancelled" as const } 
+      setAppointments(appointments.map(apt =>
+        apt.id === selectedAppointment.id
+          ? { ...apt, status: "cancelled" as const }
           : apt
       ));
-      
       toast({
         title: "Appointment Cancelled",
         description: "Your appointment has been cancelled successfully.",
       });
-      
-      // Close dialog and reset form
       setCancelDialogOpen(false);
       setCancelReason("");
       setSelectedAppointment(null);
@@ -164,11 +146,11 @@ const AppointmentManagement = () => {
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-2 text-gray-500" />
                     <span>
-                      {new Date(appointment.date).toLocaleDateString('en-US', { 
-                        weekday: 'short', 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
+                      {new Date(appointment.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
                       })}
                     </span>
                   </div>
@@ -194,8 +176,8 @@ const AppointmentManagement = () => {
                     <Button variant="outline" className="flex-1">
                       <Edit className="h-4 w-4 mr-2" /> Reschedule
                     </Button>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       className="flex-1"
                       onClick={() => handleCancelClick(appointment)}
                     >
@@ -238,6 +220,12 @@ const AppointmentManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BookAppointmentDialog
+        open={bookDialogOpen}
+        onOpenChange={setBookDialogOpen}
+        onAppointmentBooked={handleAppointmentBooked}
+      />
     </div>
   );
 };

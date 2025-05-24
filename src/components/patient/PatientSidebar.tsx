@@ -42,7 +42,7 @@ const PatientSidebar: React.FC<PatientSidebarProps> = ({ isOpen, setIsOpen }) =>
     { 
       icon: <Stethoscope size={18} />, 
       name: "Find Doctor", 
-      path: "/book-appointment",
+      path: "/patient-dashboard?tab=appointments",
       color: "text-green-600" 
     },
     { 

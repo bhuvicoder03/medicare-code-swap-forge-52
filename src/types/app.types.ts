@@ -1,4 +1,3 @@
-
 // Add any custom application types here
 export type NotificationType = 'success' | 'error' | 'info' | 'warning';
 
@@ -35,6 +34,17 @@ export interface Hospital {
   logo?: string;
   website?: string;
   user?: string;
+}
+
+export interface Doctor {
+  id: string;
+  name: string;
+  hospitalId: string;
+  specialty: string;
+  qualification: string;
+  experience: number;
+  rating: number;
+  availability: string[];
 }
 
 export interface HealthCard {
@@ -92,6 +102,7 @@ export interface Appointment {
   status: 'pending' | 'completed' | 'confirmed' | 'cancelled';
   reason: string;
   notes: string;
+  slot?: string; // Optional field to store the selected time slot (e.g., "Monday: 9AM - 2PM")
 }
 
 // Auth types
