@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 
 const LoanApplicationSchema = new mongoose.Schema({
@@ -7,10 +6,21 @@ const LoanApplicationSchema = new mongoose.Schema({
     ref: 'user',
     required: true
   },
+  patientId: {
+    type: String,
+    required: true,
+    index: true
+  },
   applicationNumber: {
     type: String,
     unique: true,
     required: true
+  },
+  applicantType: {
+    type: String,
+    enum: ['patient', 'guarantor'],
+    required: true,
+    default: 'patient'
   },
   personalDetails: {
     fullName: { type: String, required: true },
@@ -20,6 +30,15 @@ const LoanApplicationSchema = new mongoose.Schema({
     address: { type: String, required: true },
     panNumber: { type: String, required: true },
     aadhaarNumber: { type: String, required: true }
+  },
+  guarantorDetails: {
+    fullName: { type: String },
+    email: { type: String },
+    phone: { type: String },
+    relationship: { type: String },
+    address: { type: String },
+    panNumber: { type: String },
+    aadhaarNumber: { type: String }
   },
   employmentDetails: {
     type: { type: String, enum: ['salaried', 'self_employed', 'business'], required: true },
@@ -32,7 +51,7 @@ const LoanApplicationSchema = new mongoose.Schema({
   loanDetails: {
     amount: { type: Number, required: true },
     purpose: { type: String, required: true },
-    tenure: { type: Number, required: true }, // in months
+    tenure: { type: Number, required: true },
     hospitalName: { type: String },
     hospitalId: { type: mongoose.Schema.Types.ObjectId, ref: 'hospital' },
     treatmentType: { type: String }
@@ -54,11 +73,16 @@ const LoanApplicationSchema = new mongoose.Schema({
     salarySlips: [{ type: String }],
     bankStatements: [{ type: String }],
     addressProof: { type: String },
-    employmentLetter: { type: String }
+    employmentLetter: { type: String },
+    guarantorDocuments: {
+      aadhaarCard: { type: String },
+      panCard: { type: String },
+      incomeProof: [{ type: String }]
+    }
   },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'under_review', 'credit_check', 'approved', 'rejected', 'disbursed'],
+    enum: ['draft', 'submitted', 'under_review', 'credit_check', 'approved', 'rejected', 'disbursed', 'additional_documents_needed'],
     default: 'draft'
   },
   approvalDetails: {
@@ -83,6 +107,12 @@ const LoanApplicationSchema = new mongoose.Schema({
     nextEmiDate: { type: Date },
     remainingBalance: { type: Number }
   },
+  comments: [{
+    message: { type: String, required: true },
+    author: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
+    timestamp: { type: Date, default: Date.now },
+    statusChange: { type: String }
+  }],
   applicationDate: {
     type: Date,
     default: Date.now

@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 const User = require('./models/User');
 const Hospital = require('./models/Hospital');
@@ -30,25 +31,38 @@ const seedDatabase = async () => {
     await User.deleteMany({});
     await Hospital.deleteMany({});
     await HealthCard.deleteMany({});
-    await LoanApplication.deleteMany({}); // Changed from Loan to LoanApplication
+    await LoanApplication.deleteMany({});
     await Transaction.deleteMany({});
     await Notification.deleteMany({});
     
     console.log('Cleared existing data');
 
-    // Insert users
-    const createdUsers = await User.insertMany(users);
+    // Insert users with patientId for patients
+    const userData = users.map((user, index) => {
+      if (user.role === 'patient') {
+        return {
+          ...user,
+          patientId: `P${String(index + 1).padStart(3, '0')}`
+        };
+      }
+      return user;
+    });
+    
+    const createdUsers = await User.insertMany(userData);
     console.log(`Inserted ${createdUsers.length} users`);
     
-    // Map user emails to their IDs for reference
+    // Map user emails to their IDs and patientIds for reference
     const userMap = {};
+    const patientIdMap = {};
     createdUsers.forEach(user => {
       userMap[user.email] = user._id;
+      if (user.role === 'patient' && user.patientId) {
+        patientIdMap[user.patientId] = user._id;
+      }
     });
 
     // Insert hospitals and assign users
     const hospitalData = hospitals.map((hospital, index) => {
-      // Map each hospital to its corresponding user by email
       let userEmail;
       
       if (hospital.name === "City General Hospital") {
@@ -58,11 +72,9 @@ const seedDatabase = async () => {
       } else if (hospital.name === "LifeCare Medical Center") {
         userEmail = "anand@lifecaremedical.com";
       } else {
-        // Fallback to a default hospital user
         userEmail = "hospital@demo.com";
       }
       
-      // Assign the hospital to the corresponding user
       return {
         ...hospital,
         user: userMap[userEmail]
@@ -72,17 +84,14 @@ const seedDatabase = async () => {
     const createdHospitals = await Hospital.insertMany(hospitalData);
     console.log(`Inserted ${createdHospitals.length} hospitals`);
 
-    // Create hospital ID to record mapping for referencing
     const hospitalMap = {};
     createdHospitals.forEach(hospital => {
       hospitalMap[hospital.name] = hospital._id;
     });
 
     // Assign a default user to health cards if not specified
-    // This fixes the validation error by ensuring all health cards have a user
     const healthCardData = healthCards.map(card => {
       if (!card.user) {
-        // Find the first patient user to associate with the health card
         const patientUser = createdUsers.find(user => user.role === 'patient');
         card.user = patientUser ? patientUser._id : createdUsers[0]._id;
       }
@@ -92,20 +101,22 @@ const seedDatabase = async () => {
     const createdHealthCards = await HealthCard.insertMany(healthCardData);
     console.log(`Inserted ${createdHealthCards.length} health cards`);
 
-    // Update the loans section to use LoanApplication
-    const loanData = loans.map(loan => {
+    // Update the loans section to use the new structure
+    const loanData = loans.map((loan, index) => {
       const applicationNumber = `LA${Date.now()}${Math.floor(Math.random() * 1000)}`;
       
-      // Ensure we have a valid user ID
-      if (!userMap[loan.userEmail]) {
+      // Get user ID for the loan
+      let userId = userMap[loan.userEmail];
+      if (!userId) {
         console.warn(`No user found for email: ${loan.userEmail}, using first user as fallback`);
+        userId = Object.values(userMap)[0];
       }
-      
+
       // Map status to valid enum value
       let mappedStatus;
       switch (loan.status) {
         case 'pending':
-          mappedStatus = 'draft';
+          mappedStatus = 'submitted';
           break;
         case 'submitted':
           mappedStatus = 'submitted';
@@ -116,13 +127,24 @@ const seedDatabase = async () => {
         case 'rejected':
           mappedStatus = 'rejected';
           break;
+        case 'disbursed':
+          mappedStatus = 'disbursed';
+          break;
+        case 'under_review':
+          mappedStatus = 'under_review';
+          break;
+        case 'additional_documents_needed':
+          mappedStatus = 'additional_documents_needed';
+          break;
         default:
-          mappedStatus = 'draft';
+          mappedStatus = 'submitted';
       }
 
-      return {
-        user: userMap[loan.userEmail] || Object.values(userMap)[0], // Fallback to first user if email not found
+      const loanObject = {
+        user: userId,
+        patientId: loan.patientId || userId, // Use patientId if provided, otherwise user ID
         applicationNumber,
+        applicantType: loan.applicantType || 'patient',
         personalDetails: {
           fullName: loan.fullName || 'John Doe',
           email: loan.userEmail || 'john@example.com', 
@@ -150,21 +172,59 @@ const seedDatabase = async () => {
         },
         status: mappedStatus
       };
+
+      // Add guarantor details if applicant type is guarantor
+      if (loan.applicantType === 'guarantor') {
+        loanObject.guarantorDetails = {
+          fullName: loan.guarantorName || 'Guarantor Name',
+          email: loan.guarantorEmail || 'guarantor@example.com',
+          phone: loan.guarantorPhone || '9876543210',
+          relationship: loan.guarantorRelationship || 'friend',
+          address: loan.guarantorAddress || '123 Guarantor Street',
+          panNumber: loan.guarantorPan || 'GRTEE1234F',
+          aadhaarNumber: loan.guarantorAadhaar || '987654321012'
+        };
+      }
+
+      // Add approval details for approved/disbursed loans
+      if (mappedStatus === 'approved' || mappedStatus === 'disbursed') {
+        loanObject.approvalDetails = {
+          approvedAmount: loan.amount || 500000,
+          interestRate: 10.5,
+          processingFee: Math.round((loan.amount || 500000) * 0.02),
+          emi: Math.round((loan.amount || 500000) / (loan.tenure || 24) * 1.15),
+          approvedTenure: loan.tenure || 24,
+          approvalDate: new Date(),
+          ...(mappedStatus === 'disbursed' && { disbursementDate: new Date() })
+        };
+
+        // Add EMI details for disbursed loans
+        if (mappedStatus === 'disbursed') {
+          loanObject.emiDetails = {
+            emiAmount: Math.round((loan.amount || 500000) / (loan.tenure || 24) * 1.15),
+            totalEmis: loan.tenure || 24,
+            paidEmis: Math.floor(Math.random() * 6), // Random paid EMIs
+            nextEmiDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+            remainingBalance: (loan.amount || 500000) * 0.8 // 80% remaining
+          };
+        }
+      }
+
+      return loanObject;
     });
     
-    const createdLoans = await LoanApplication.insertMany(loanData); // Changed from Loan to LoanApplication
+    const createdLoans = await LoanApplication.insertMany(loanData);
     console.log(`Inserted ${createdLoans.length} loans`);
 
     // Insert transactions with proper user references
     const transactionData = transactions.map(transaction => {
-      // Ensure we have a valid user ID
       if (!userMap[transaction.userEmail]) {
         console.warn(`No user found for email: ${transaction.userEmail}, using first user as fallback`);
       }
       
       return {
         ...transaction,
-        user: userMap[transaction.userEmail] || Object.values(userMap)[0], // Fallback to first user if email not found
+        user: userMap[transaction.userEmail] || Object.values(userMap)[0],
         hospital: transaction.hospital || 'Unknown Hospital'
       };
     });
@@ -174,15 +234,13 @@ const seedDatabase = async () => {
 
     // Update the notifications section
     const notificationData = notifications.map(notification => {
-      // Ensure we have a valid user ID
       if (!userMap[notification.userEmail]) {
         console.warn(`No user found for email: ${notification.userEmail}, using first user as fallback`);
       }
 
-      // Create new notification object with required user field
       return {
         ...notification,
-        user: userMap[notification.userEmail] || Object.values(userMap)[0], // Fallback to first user if email not found
+        user: userMap[notification.userEmail] || Object.values(userMap)[0],
         message: notification.message || 'System notification',
         type: notification.type || 'info',
         createdAt: notification.createdAt || new Date()
@@ -193,6 +251,10 @@ const seedDatabase = async () => {
     console.log(`Inserted ${createdNotifications.length} notifications`);
 
     console.log('Database seeding completed successfully');
+    console.log(`\nSample Patient IDs for testing:`);
+    createdUsers.filter(user => user.role === 'patient').forEach(user => {
+      console.log(`- ${user.firstName} ${user.lastName}: ID = ${user._id} | Patient ID = ${user.patientId}`);
+    });
     
   } catch (err) {
     console.error('Error seeding database:', err);

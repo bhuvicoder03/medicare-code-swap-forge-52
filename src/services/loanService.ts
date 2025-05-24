@@ -4,6 +4,8 @@ import { api } from './api';
 export interface LoanApplication {
   _id?: string;
   applicationNumber?: string;
+  patientId?: string;
+  applicantType?: 'patient' | 'guarantor';
   personalDetails: {
     fullName: string;
     email: string;
@@ -12,6 +14,15 @@ export interface LoanApplication {
     address: string;
     panNumber: string;
     aadhaarNumber: string;
+  };
+  guarantorDetails?: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    relationship?: string;
+    address?: string;
+    panNumber?: string;
+    aadhaarNumber?: string;
   };
   employmentDetails: {
     type: 'salaried' | 'self_employed' | 'business';
@@ -33,7 +44,7 @@ export interface LoanApplication {
     creditScore?: number;
     accountAggregatorScore?: number;
   };
-  status: 'draft' | 'submitted' | 'under_review' | 'credit_check' | 'approved' | 'rejected' | 'disbursed';
+  status: 'draft' | 'submitted' | 'under_review' | 'credit_check' | 'approved' | 'rejected' | 'disbursed' | 'additional_documents_needed';
   approvalDetails?: {
     approvedAmount?: number;
     interestRate?: number;
@@ -55,6 +66,12 @@ export interface LoanApplication {
     nextEmiDate?: string;
     remainingBalance?: number;
   };
+  comments?: Array<{
+    message: string;
+    author: any;
+    timestamp: string;
+    statusChange?: string;
+  }>;
   applicationDate?: string;
 }
 
@@ -89,17 +106,27 @@ export interface EmiPayment {
 class LoanService {
   async getAllLoans(): Promise<LoanApplication[]> {
     const response = await api.get('/loans');
-    return response.data;
+    return response.data || response;
   }
 
   async getLoanById(loanId: string): Promise<LoanApplication> {
     const response = await api.get(`/loans/${loanId}`);
-    return response.data;
+    return response.data || response;
   }
 
-  async createLoanApplication(applicationData: Omit<LoanApplication, '_id' | 'applicationNumber' | 'status' | 'applicationDate'>): Promise<{ loan: LoanApplication; applicationNumber: string }> {
+  async getLoansByPatientId(patientId: string): Promise<LoanApplication[]> {
+    const response = await api.get(`/loans/patient/${patientId}`);
+    return response.data || response;
+  }
+
+  async verifyPatientId(patientId: string): Promise<{ valid: boolean; patient?: any; message?: string }> {
+    const response = await api.post(`/loans/verify-patient/${patientId}`);
+    return response.data || response;
+  }
+
+  async createLoanApplication(applicationData: any): Promise<{ loan: LoanApplication; applicationNumber: string }> {
     const response = await api.post('/loans/apply', applicationData);
-    return response.data;
+    return response.data || response;
   }
 
   async updateLoanStatus(loanId: string, status: string, details?: any): Promise<LoanApplication> {
@@ -107,22 +134,27 @@ class LoanService {
       status,
       ...details
     });
-    return response.data;
+    return response.data || response;
+  }
+
+  async addComment(loanId: string, message: string): Promise<LoanApplication> {
+    const response = await api.post(`/loans/${loanId}/add-comment`, { message });
+    return response.data || response;
   }
 
   async getLoanOffers(loanId: string): Promise<LoanOffer[]> {
     const response = await api.get(`/loans/${loanId}/offers`);
-    return response.data;
+    return response.data || response;
   }
 
   async selectLoanOffer(loanId: string, offerId: string): Promise<{ loan: LoanApplication; selectedOffer: LoanOffer }> {
     const response = await api.post(`/loans/${loanId}/select-offer`, { offerId });
-    return response.data;
+    return response.data || response;
   }
 
   async getEmiSchedule(loanId: string): Promise<EmiPayment[]> {
     const response = await api.get(`/loans/${loanId}/emis`);
-    return response.data;
+    return response.data || response;
   }
 
   async payEmi(emiId: string, paymentData: {
@@ -131,7 +163,7 @@ class LoanService {
     amountPaid?: number;
   }): Promise<{ emi: EmiPayment; loan: LoanApplication }> {
     const response = await api.post(`/loans/emi/${emiId}/pay`, paymentData);
-    return response.data;
+    return response.data || response;
   }
 
   async prepayLoan(loanId: string, prepaymentData: {
@@ -140,7 +172,7 @@ class LoanService {
     transactionId: string;
   }): Promise<LoanApplication> {
     const response = await api.post(`/loans/${loanId}/prepay`, prepaymentData);
-    return response.data;
+    return response.data || response;
   }
 }
 

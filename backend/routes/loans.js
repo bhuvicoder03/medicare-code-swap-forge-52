@@ -3,6 +3,7 @@ const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const { LoanApplication, EmiPayment, LoanOffer } = require('../models/Loan');
+const User = require('../models/User');
 
 // Generate application number
 const generateApplicationNumber = () => {
@@ -13,6 +14,57 @@ const generateApplicationNumber = () => {
   const random = Math.floor(10000 + Math.random() * 90000);
   return `LA${year}${month}${day}${random}`;
 };
+
+// @route   GET api/loans/patient/:patientId
+// @desc    Get loans by patient ID (public access for guarantor)
+// @access  Public
+router.get('/patient/:patientId', async (req, res) => {
+  try {
+    const loans = await LoanApplication.find({ patientId: req.params.patientId })
+      .populate('loanDetails.hospitalId', 'name')
+      .populate('user', 'firstName lastName')
+      .sort({ applicationDate: -1 });
+    
+    res.json(loans);
+  } catch (err) {
+    console.error('Error fetching loans by patient ID:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   POST api/loans/verify-patient/:patientId
+// @desc    Verify patient ID exists
+// @access  Public
+router.post('/verify-patient/:patientId', async (req, res) => {
+  try {
+    const patient = await User.findOne({ 
+      $or: [
+        { _id: req.params.patientId },
+        { patientId: req.params.patientId }
+      ],
+      role: 'patient' 
+    });
+    
+    if (!patient) {
+      return res.status(404).json({ 
+        valid: false, 
+        message: 'Patient ID not found' 
+      });
+    }
+    
+    res.json({ 
+      valid: true, 
+      patient: {
+        id: patient._id,
+        name: `${patient.firstName} ${patient.lastName}`,
+        email: patient.email
+      }
+    });
+  } catch (err) {
+    console.error('Error verifying patient ID:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
 
 // @route   GET api/loans
 // @desc    Get all loans for a user or all loans for admin
@@ -47,7 +99,8 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const loan = await LoanApplication.findById(req.params.id)
       .populate('loanDetails.hospitalId', 'name')
-      .populate('approvalDetails.approvedBy', 'firstName lastName');
+      .populate('approvalDetails.approvedBy', 'firstName lastName')
+      .populate('comments.author', 'firstName lastName role');
     
     if (!loan) {
       return res.status(404).json({ msg: 'Loan application not found' });
@@ -66,10 +119,9 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // @route   POST api/loans/apply
-// @desc    Create new loan application
-// @access  Private
+// @desc    Create new loan application (patient or guarantor)
+// @access  Public/Private
 router.post('/apply', [
-  auth,
   [
     check('personalDetails.fullName', 'Full name is required').not().isEmpty(),
     check('personalDetails.email', 'Valid email is required').isEmail(),
@@ -78,7 +130,9 @@ router.post('/apply', [
     check('loanDetails.purpose', 'Loan purpose is required').not().isEmpty(),
     check('loanDetails.tenure', 'Loan tenure is required').isNumeric(),
     check('employmentDetails.type', 'Employment type is required').not().isEmpty(),
-    check('employmentDetails.monthlyIncome', 'Monthly income is required').isNumeric()
+    check('employmentDetails.monthlyIncome', 'Monthly income is required').isNumeric(),
+    check('patientId', 'Patient ID is required').not().isEmpty(),
+    check('applicantType', 'Applicant type is required').isIn(['patient', 'guarantor'])
   ]
 ], async (req, res) => {
   const errors = validationResult(req);
@@ -87,11 +141,28 @@ router.post('/apply', [
   }
 
   try {
+    const { patientId, applicantType } = req.body;
+    
+    // Verify patient exists
+    const patient = await User.findOne({ 
+      $or: [
+        { _id: patientId },
+        { patientId: patientId }
+      ],
+      role: 'patient' 
+    });
+    
+    if (!patient) {
+      return res.status(404).json({ msg: 'Patient not found' });
+    }
+
     const applicationNumber = generateApplicationNumber();
     
     const newLoan = new LoanApplication({
-      user: req.user.id,
+      user: patient._id,
+      patientId: patient._id,
       applicationNumber,
+      applicantType,
       ...req.body,
       status: 'submitted'
     });
@@ -109,23 +180,33 @@ router.post('/apply', [
 });
 
 // @route   PUT api/loans/:id/update-status
-// @desc    Update loan application status
-// @access  Private (Admin only)
+// @desc    Update loan application status with comments
+// @access  Private (Admin/Hospital only)
 router.put('/:id/update-status', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!['admin', 'hospital'].includes(req.user.role)) {
       return res.status(401).json({ msg: 'Not authorized' });
     }
 
-    const { status, approvalDetails, rejectionDetails } = req.body;
+    const { status, approvalDetails, rejectionDetails, comment } = req.body;
     
     const loan = await LoanApplication.findById(req.params.id);
     if (!loan) {
       return res.status(404).json({ msg: 'Loan application not found' });
     }
 
+    const oldStatus = loan.status;
     loan.status = status;
     loan.lastUpdated = new Date();
+
+    // Add comment for status change
+    if (comment || oldStatus !== status) {
+      loan.comments.push({
+        message: comment || `Status changed from ${oldStatus} to ${status}`,
+        author: req.user.id,
+        statusChange: `${oldStatus} -> ${status}`
+      });
+    }
 
     if (status === 'approved' && approvalDetails) {
       loan.approvalDetails = {
@@ -146,8 +227,43 @@ router.put('/:id/update-status', auth, async (req, res) => {
       };
     }
 
+    if (status === 'disbursed') {
+      loan.approvalDetails.disbursementDate = new Date();
+      // Here you would integrate with wallet system
+      await disburseLoanToWallet(loan);
+    }
+
     await loan.save();
     res.json(loan);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   POST api/loans/:id/add-comment
+// @desc    Add comment to loan application
+// @access  Private
+router.post('/:id/add-comment', auth, async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    const loan = await LoanApplication.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({ msg: 'Loan application not found' });
+    }
+
+    loan.comments.push({
+      message,
+      author: req.user.id
+    });
+    
+    await loan.save();
+    
+    const updatedLoan = await LoanApplication.findById(req.params.id)
+      .populate('comments.author', 'firstName lastName role');
+    
+    res.json(updatedLoan);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -346,7 +462,7 @@ const generateLoanOffers = async (applicationId, applicationData) => {
       tenure: 12,
       processingFee: baseAmount * 0.02,
       description: 'Quick approval with competitive rates',
-      validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     },
     {
       application: applicationId,
@@ -440,6 +556,13 @@ const recalculateEmiSchedule = async (loan, prepaidAmount) => {
     emi.emiAmount = emi.principalAmount + emi.interestAmount;
     await emi.save();
   }
+};
+
+// Helper function to disburse loan to wallet
+const disburseLoanToWallet = async (loan) => {
+  // This would integrate with your wallet system
+  console.log(`Disbursing ₹${loan.approvalDetails.approvedAmount} to patient wallet for loan ${loan.applicationNumber}`);
+  // Implementation depends on your wallet system
 };
 
 module.exports = router;
