@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -157,6 +156,9 @@ const HealthCardManagement = () => {
     );
   }
 
+  // Mock balance for display - this would come from backend
+  const mockBalance = 15000;
+
   return (
     <div className="space-y-6">
       {/* Health Card Display */}
@@ -172,7 +174,7 @@ const HealthCardManagement = () => {
           
           <div className="space-y-4">
             <div className="font-mono text-xl tracking-wider">
-              {healthCard.card_number || healthCard.cardNumber || "•••• •••• •••• ••••"}
+              {healthCard.card_number || "•••• •••• •••• ••••"}
             </div>
             
             <div className="flex justify-between items-end">
@@ -187,7 +189,7 @@ const HealthCardManagement = () => {
                 <p className="text-xs opacity-75 mb-1">BALANCE</p>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold">
-                    {showBalance ? `₹${(healthCard.balance || 0).toLocaleString()}` : "₹••••"}
+                    {showBalance ? `₹${mockBalance.toLocaleString()}` : "₹••••"}
                   </span>
                   <Button
                     variant="ghost"

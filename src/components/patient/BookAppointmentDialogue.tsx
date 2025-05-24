@@ -224,6 +224,7 @@ const BookAppointmentDialog = ({ open, onOpenChange, onAppointmentBooked }: Book
       const selectedDoctor = mockDoctors.find((d) => d.id === formData.doctorId);
 
       const appointmentData: Appointment = {
+        id: `apt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         patientName: `${authState.user.firstName} ${authState.user.lastName}`,
         patientId: authState.user.id,
         hospitalName: selectedHospital?.name || "",
