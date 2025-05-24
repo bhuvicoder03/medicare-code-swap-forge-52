@@ -43,6 +43,11 @@ export interface LoanApplication {
     approvalDate?: string;
     disbursementDate?: string;
   };
+  rejectionDetails?: {
+    reason?: string;
+    rejectedBy?: string;
+    rejectionDate?: string;
+  };
   emiDetails?: {
     emiAmount?: number;
     totalEmis?: number;
