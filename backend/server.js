@@ -1,3 +1,4 @@
+
 const express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
@@ -55,8 +56,6 @@ console.log('Express app instance created');
 app.use((req,res,next)=>{
   res.header('Access-Control-Allow-Origin', '*');
   next();
-
-
 });
 
 // Init Middleware
@@ -137,6 +136,7 @@ setupRoute('/api/health-cards', require('./routes/healthCards'));
 setupRoute('/api/loans', require('./routes/loans'));
 setupRoute('/api/transactions', require('./routes/transactions'));
 setupRoute('/api/notifications', require('./routes/notifications'));
+setupRoute('/api/seed', require('./routes/seed'));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
