@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { loanService, LoanApplication, EmiPayment } from "@/services/loanService";
 import { processPaymentWithFallback, PaymentMethod } from "@/services/mockPaymentService";
+import { useAuth } from "@/hooks/useAuth";
 
 const LoanManagement = () => {
   const { toast } = useToast();
-  
+  const { authState } = useAuth();
+
   // State management
   const [loans, setLoans] = useState<LoanApplication[]>([]);
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
@@ -36,7 +37,11 @@ const LoanManagement = () => {
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const loansData = await loanService.getAllLoans();
+      // Fetch patient-specific loans if user is logged in
+      let loansData: LoanApplication[] = [];
+      if (authState.user && authState.user.id) {
+        loansData = await loanService.getLoansByPatientId(authState.user.id);
+      }
       const approvedLoans = loansData.filter(loan => loan.status === 'approved' || loan.status === 'disbursed');
       setLoans(approvedLoans);
       
