@@ -1,3 +1,4 @@
+
 const express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
@@ -136,6 +137,7 @@ setupRoute('/api/hospitals', require('./routes/hospitals'));
 setupRoute('/api/health-cards', require('./routes/healthCards'));
 setupRoute('/api/loans', require('./routes/loans'));
 setupRoute('/api/transactions', require('./routes/transactions'));
+setupRoute('/api/payments', require('./routes/payments'));
 setupRoute('/api/notifications', require('./routes/notifications'));
 
 // Serve static assets in production
