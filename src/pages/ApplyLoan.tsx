@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -15,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
+import { useAuth } from "@/hooks/useAuth";
 
 // Define the offer interface to ensure consistent typing
 interface LoanOffer {
@@ -28,6 +28,7 @@ interface LoanOffer {
 const ApplyLoan = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { authState } = useAuth();
   const [loaded, setLoaded] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [processingApplication, setProcessingApplication] = useState(false);
@@ -283,6 +284,20 @@ const ApplyLoan = () => {
         return <LoanApplicationForm />;
     }
   };
+
+  // --- ENSURE PATIENT AUTH ---
+  // Redirect to login if not logged in or not a patient
+  useEffect(() => {
+    if (!authState.user || authState.user.role !== "patient") {
+      toast({
+        variant: "destructive",
+        title: "Login Required",
+        description: "Please log in as a patient to apply for a new loan.",
+      });
+      navigate("/login");
+    }
+    // eslint-disable-next-line
+  }, [authState.user]);
 
   return (
     <div className="min-h-screen flex flex-col">

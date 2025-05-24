@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { loanService, LoanApplication, EmiPayment } from "@/services/loanService
 import { processPaymentWithFallback, PaymentMethod } from "@/services/mockPaymentService";
 import { useAuth } from "@/hooks/useAuth";
 
+// Main patient loan management component
 const LoanManagement = () => {
   const { toast } = useToast();
   const { authState } = useAuth();
@@ -21,7 +23,7 @@ const LoanManagement = () => {
   const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
   const [emiSchedule, setEmiSchedule] = useState<EmiPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Dialog states
   const [payEmiDialogOpen, setPayEmiDialogOpen] = useState(false);
   const [prepayDialogOpen, setPrepayDialogOpen] = useState(false);
@@ -32,19 +34,21 @@ const LoanManagement = () => {
 
   useEffect(() => {
     fetchLoans();
+    // eslint-disable-next-line
   }, []);
 
+  // Fetch patient-specific loans using authState.user.id as patientId
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      // Fetch patient-specific loans if user is logged in
       let loansData: LoanApplication[] = [];
-      if (authState.user && authState.user.id) {
-        loansData = await loanService.getLoansByPatientId(authState.user.id);
+      const patientId = authState.user?.id;
+      if (patientId) {
+        loansData = await loanService.getLoansByPatientId(patientId);
       }
+      // Show loans only for approved or disbursed
       const approvedLoans = loansData.filter(loan => loan.status === 'approved' || loan.status === 'disbursed');
       setLoans(approvedLoans);
-      
       if (approvedLoans.length > 0) {
         setSelectedLoan(approvedLoans[0]);
         fetchEmiSchedule(approvedLoans[0]._id!);

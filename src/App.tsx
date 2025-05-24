@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,6 +33,13 @@ import StoresService from "./pages/services/StoresService";
 import PathologyService from "./pages/services/PathologyService";
 import PharmacyService from "./pages/services/PharmacyService";
 
+// The following imports do not exist or are not needed; REMOVED:
+// import LandingPage from "./pages/LandingPage";
+// import LoginPage from "./pages/LoginPage";
+// import RegisterPage from "./pages/RegisterPage";
+// import SalesDashboard from "./pages/SalesDashboard";
+// import PrivateRoute from "./components/PrivateRoute";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -42,60 +50,40 @@ const App = () => (
           <Suspense fallback={<div className="loading">Loading...</div>}>
             <Routes>
               {/* Public Routes */}
-
               <Route path="/" element={<Index />} />
-
               <Route path="/login" element={<Login />} />
-
               <Route path="/signup" element={<Signup />} />
-
               <Route path="/about-us" element={<AboutUs />} />
-
               <Route path="/our-cards" element={<OurCards />} />
-
               <Route
                 path="/terms-and-conditions"
                 element={<TermsAndConditions />}
               />
-
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-
               <Route
                 path="/hospital-registration"
                 element={<HospitalRegistration />}
               />
-
               <Route path="/apply-loan" element={<ApplyLoan />} />
-
               <Route path="/sitemap" element={<Sitemap />} />
-
               {/* Service Routes */}
-
               <Route
                 path="/services/ambulance"
                 element={<AmbulanceService />}
               />
-
               <Route
                 path="/services/financing"
                 element={<FinancingService />}
               />
-
               <Route
                 path="/services/pathology"
                 element={<PathologyService />}
               />
-
               <Route path="/services/pharma" element={<PharmaService />} />
-
               <Route path="/services/pharmacy" element={<PharmacyService />} />
-
               <Route path="/services/stores" element={<StoresService />} />
-
               {/* Protected Dashboard Routes */}
-
               {/*Patient dashboard routes*/}
-
               <Route
                 path="/patient-dashboard/*"
                 element={
@@ -112,8 +100,6 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-
-
               <Route
                 path="/hospital-dashboard/*"
                 element={
@@ -122,7 +108,6 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/admin-dashboard/*"
                 element={
@@ -131,7 +116,6 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/sales-dashboard/*"
                 element={
@@ -140,7 +124,6 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/crm-dashboard/*"
                 element={
@@ -149,7 +132,6 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/agent-dashboard/*"
                 element={
@@ -158,7 +140,6 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/support-dashboard/*"
                 element={
@@ -167,9 +148,7 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-
               {/* Not Found Route */}
-
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

@@ -1,11 +1,10 @@
-
 import { api } from './api';
 
 export interface LoanApplication {
   _id?: string;
   applicationNumber?: string;
   patientId?: string;
-  applicantType?: 'patient' | 'guarantor';
+  applicantType?: 'patient'; // Removed 'guarantor'
   personalDetails: {
     fullName: string;
     email: string;
@@ -15,15 +14,7 @@ export interface LoanApplication {
     panNumber: string;
     aadhaarNumber: string;
   };
-  guarantorDetails?: {
-    fullName?: string;
-    email?: string;
-    phone?: string;
-    relationship?: string;
-    address?: string;
-    panNumber?: string;
-    aadhaarNumber?: string;
-  };
+  // Removed guarantorDetails
   employmentDetails: {
     type: 'salaried' | 'self_employed' | 'business';
     companyName: string;
