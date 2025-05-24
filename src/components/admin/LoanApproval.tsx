@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,14 +51,23 @@ const LoanApproval = () => {
   const fetchLoans = async () => {
     try {
       setLoading(true);
+      console.log('Fetching loans for admin...');
       const allLoans = await loanService.getAllLoans();
       
-      const pending = allLoans.filter(loan => 
+      console.log('Fetched loans:', allLoans);
+      
+      // Ensure allLoans is an array
+      const loansArray = Array.isArray(allLoans) ? allLoans : [];
+      
+      const pending = loansArray.filter(loan => 
         ['submitted', 'under_review', 'credit_check'].includes(loan.status)
       );
-      const recent = allLoans.filter(loan => 
+      const recent = loansArray.filter(loan => 
         ['approved', 'rejected', 'disbursed'].includes(loan.status)
       ).slice(0, 10); // Show only recent 10
+      
+      console.log('Pending loans:', pending);
+      console.log('Recent loans:', recent);
       
       setPendingLoans(pending);
       setRecentLoans(recent);
@@ -70,6 +78,9 @@ const LoanApproval = () => {
         title: "Error",
         description: "Failed to fetch loan applications.",
       });
+      // Set empty arrays on error to prevent filter issues
+      setPendingLoans([]);
+      setRecentLoans([]);
     } finally {
       setLoading(false);
     }

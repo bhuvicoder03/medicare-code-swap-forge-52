@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
@@ -16,16 +15,27 @@ const generateApplicationNumber = () => {
 };
 
 // @route   GET api/loans
-// @desc    Get all loans for a user
+// @desc    Get all loans for a user or all loans for admin
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    const loans = await LoanApplication.find({ user: req.user.id })
-      .populate('loanDetails.hospitalId', 'name')
-      .sort({ applicationDate: -1 });
+    let loans;
+    
+    // If user is admin, return all loans; otherwise return user's loans
+    if (req.user.role === 'admin') {
+      loans = await LoanApplication.find({})
+        .populate('user', 'firstName lastName email')
+        .populate('loanDetails.hospitalId', 'name')
+        .sort({ applicationDate: -1 });
+    } else {
+      loans = await LoanApplication.find({ user: req.user.id })
+        .populate('loanDetails.hospitalId', 'name')
+        .sort({ applicationDate: -1 });
+    }
+    
     res.json(loans);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error fetching loans:', err.message);
     res.status(500).send('Server Error');
   }
 });
