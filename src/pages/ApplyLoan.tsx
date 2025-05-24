@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -15,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
+import { useAuth } from '@/hooks/useAuth';
 
 // Define the offer interface to ensure consistent typing
 interface LoanOffer {
@@ -28,6 +28,8 @@ interface LoanOffer {
 const ApplyLoan = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isLoggedIn } = useAuth();
+
   const [loaded, setLoaded] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [processingApplication, setProcessingApplication] = useState(false);
@@ -57,6 +59,18 @@ const ApplyLoan = () => {
     setLoaded(true);
   }, []);
 
+  // Ensure only logged-in patients can access this page
+  useEffect(() => {
+    if (!isLoggedIn || user?.role !== "patient") {
+      navigate("/login");
+      toast({
+        variant: "destructive",
+        title: "Login required",
+        description: "Please log in as a patient to apply for a loan."
+      });
+    }
+  }, [isLoggedIn, user, navigate, toast]);
+
   // Handle next step navigation
   const handleNextStep = () => {
     if (currentStep < steps.length - 1) {
@@ -74,7 +88,7 @@ const ApplyLoan = () => {
   };
 
   // Handle personal details submission
-  const handlePersonalDetailsSubmit = (data) => {
+  const handlePersonalDetailsSubmit = (data: any) => {
     setApplicationData({
       ...applicationData,
       personalDetails: data
@@ -182,7 +196,12 @@ const ApplyLoan = () => {
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
-        return <LoanApplicationForm />;
+        // Remove Guarantor logic; only patient application allowed 
+        return (
+          <LoanApplicationForm 
+            onSubmit={handlePersonalDetailsSubmit}
+          />
+        );
       case 1:
         return (
           <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
@@ -280,7 +299,7 @@ const ApplyLoan = () => {
           </div>
         );
       default:
-        return <LoanApplicationForm />;
+        return <LoanApplicationForm onSubmit={handlePersonalDetailsSubmit} />;
     }
   };
 

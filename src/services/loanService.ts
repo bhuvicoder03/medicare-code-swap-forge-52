@@ -1,11 +1,10 @@
-
 import { api } from './api';
 
 export interface LoanApplication {
   _id?: string;
   applicationNumber?: string;
   patientId?: string;
-  applicantType?: 'patient' | 'guarantor';
+  applicantType?: 'patient';
   personalDetails: {
     fullName: string;
     email: string;
@@ -14,15 +13,6 @@ export interface LoanApplication {
     address: string;
     panNumber: string;
     aadhaarNumber: string;
-  };
-  guarantorDetails?: {
-    fullName?: string;
-    email?: string;
-    phone?: string;
-    relationship?: string;
-    address?: string;
-    panNumber?: string;
-    aadhaarNumber?: string;
   };
   employmentDetails: {
     type: 'salaried' | 'self_employed' | 'business';

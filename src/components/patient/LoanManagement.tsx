@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { loanService, LoanApplication, EmiPayment } from "@/services/loanService";
 import { processPaymentWithFallback, PaymentMethod } from "@/services/mockPaymentService";
+import { useAuth } from "@/hooks/useAuth";
 
 const LoanManagement = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // State management
   const [loans, setLoans] = useState<LoanApplication[]>([]);
@@ -37,9 +38,12 @@ const LoanManagement = () => {
     try {
       setLoading(true);
       const loansData = await loanService.getAllLoans();
-      const approvedLoans = loansData.filter(loan => loan.status === 'approved' || loan.status === 'disbursed');
+      // For patient, filter by patientId only (for extra safety, backend also enforces)
+      const patientId = user?.patientId || user?._id;
+      const approvedLoans = loansData.filter(
+        (loan) => loan.patientId === patientId && (loan.status === 'approved' || loan.status === 'disbursed')
+      );
       setLoans(approvedLoans);
-      
       if (approvedLoans.length > 0) {
         setSelectedLoan(approvedLoans[0]);
         fetchEmiSchedule(approvedLoans[0]._id!);
