@@ -9,35 +9,19 @@ const LoanSchema = new mongoose.Schema({
   },
   amount: {
     type: Number,
-    required: true,
-    min: 1000
+    required: true
   },
   termMonths: {
     type: Number,
-    required: true,
-    min: 3,
-    max: 60
+    required: true
   },
   interestRate: {
     type: Number,
-    required: true,
-    min: 8,
-    max: 25
-  },
-  purpose: {
-    type: String,
-    required: true,
-    enum: ['treatment', 'surgery', 'maternity', 'emergency', 'dental', 'other']
-  },
-  description: {
-    type: String
-  },
-  hospital_id: {
-    type: String
+    required: true
   },
   status: {
     type: String,
-    enum: ['approved', 'pending', 'rejected', 'completed'],
+    enum: ['approved', 'pending', 'rejected'],
     default: 'pending'
   },
   applicationDate: {
@@ -52,25 +36,7 @@ const LoanSchema = new mongoose.Schema({
   },
   remainingBalance: {
     type: Number
-  },
-  totalPaid: {
-    type: Number,
-    default: 0
-  },
-  lastPaymentDate: {
-    type: Date
-  },
-  nextPaymentDue: {
-    type: Date
   }
-});
-
-// Calculate next payment due date before saving
-LoanSchema.pre('save', function(next) {
-  if (this.isNew && this.status === 'approved' && !this.nextPaymentDue) {
-    this.nextPaymentDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
-  }
-  next();
 });
 
 module.exports = mongoose.model('loan', LoanSchema);
