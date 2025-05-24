@@ -28,7 +28,7 @@ interface LoanOffer {
 const ApplyLoan = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, isLoggedIn } = useAuth();
+  const { authState } = useAuth();
 
   const [loaded, setLoaded] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -61,7 +61,7 @@ const ApplyLoan = () => {
 
   // Ensure only logged-in patients can access this page
   useEffect(() => {
-    if (!isLoggedIn || user?.role !== "patient") {
+    if (!authState.user || authState.user.role !== "patient") {
       navigate("/login");
       toast({
         variant: "destructive",
@@ -69,7 +69,7 @@ const ApplyLoan = () => {
         description: "Please log in as a patient to apply for a loan."
       });
     }
-  }, [isLoggedIn, user, navigate, toast]);
+  }, [authState.user, navigate, toast]);
 
   // Handle next step navigation
   const handleNextStep = () => {

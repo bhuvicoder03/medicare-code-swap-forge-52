@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const LoanManagement = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { authState } = useAuth();
   
   // State management
   const [loans, setLoans] = useState<LoanApplication[]>([]);
@@ -39,7 +39,7 @@ const LoanManagement = () => {
       setLoading(true);
       const loansData = await loanService.getAllLoans();
       // For patient, filter by patientId only (for extra safety, backend also enforces)
-      const patientId = user?.patientId || user?._id;
+      const patientId = authState.user?.patientId || authState.user?._id;
       const approvedLoans = loansData.filter(
         (loan) => loan.patientId === patientId && (loan.status === 'approved' || loan.status === 'disbursed')
       );
