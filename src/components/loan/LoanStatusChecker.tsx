@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, FileText, User, Calendar, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -155,6 +156,26 @@ const LoanStatusChecker = () => {
                                     </p>
                                   </div>
                                 </div>
+
+                                {loan.applicantType === 'guarantor' && loan.guarantorDetails && (
+                                  <div className="bg-blue-50 p-3 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <User className="h-4 w-4 text-blue-600" />
+                                      <span className="text-sm font-medium text-blue-800">Guarantor Details</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                                      <div>
+                                        <span className="text-blue-600">Name:</span> {loan.guarantorDetails.fullName}
+                                      </div>
+                                      <div>
+                                        <span className="text-blue-600">Relationship:</span> {loan.guarantorDetails.relationship}
+                                      </div>
+                                      <div>
+                                        <span className="text-blue-600">Contact:</span> {loan.guarantorDetails.phone}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
 
                                 {loan.status === 'approved' && loan.approvalDetails && (
                                   <div className="bg-green-50 p-3 rounded-lg">

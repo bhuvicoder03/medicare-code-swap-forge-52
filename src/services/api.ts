@@ -1,6 +1,6 @@
 
 // API base URL
-const API_BASE_URL ='https://medicare-code-swap-forge-52.onrender.com/api';
+const API_BASE_URL ='https://medicare-code-swap-forge-20.onrender.com/api';
 
 // Generic API request function
 export const apiRequest = async (

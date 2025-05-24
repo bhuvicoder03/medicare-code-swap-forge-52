@@ -67,28 +67,24 @@ router.post('/verify-patient/:patientId', async (req, res) => {
 });
 
 // @route   GET api/loans
-// @desc    Get all loans for a user or all loans for admin/hospital
+// @desc    Get all loans for a user or all loans for admin
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
     let loans;
-    if (req.user.role === 'admin' || req.user.role === 'hospital') {
-      // Admin & hospital: get all loans
+    
+    // If user is admin, return all loans; otherwise return user's loans
+    if (req.user.role === 'admin') {
       loans = await LoanApplication.find({})
         .populate('user', 'firstName lastName email')
         .populate('loanDetails.hospitalId', 'name')
         .sort({ applicationDate: -1 });
-    } else if (req.user.role === 'patient') {
-      // Patient: get only own loans using patientId on user profile (match by patientId)
-      // Find user's patientId
-      const user = await User.findById(req.user.id);
-      loans = await LoanApplication.find({ patientId: user.patientId || user._id })
+    } else {
+      loans = await LoanApplication.find({ user: req.user.id })
         .populate('loanDetails.hospitalId', 'name')
         .sort({ applicationDate: -1 });
-    } else {
-      // Default empty
-      loans = [];
     }
+    
     res.json(loans);
   } catch (err) {
     console.error('Error fetching loans:', err.message);
