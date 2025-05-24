@@ -1,89 +1,90 @@
 
-import React from 'react';
+import React from "react";
 
 interface PersonalDetailsFormProps {
-  formData: {
-    fullName: string;
-    email: string;
-    phone: string;
-    dob: string;
-    address: string;
-  };
+  formData: any;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }
 
-const PersonalDetailsForm = ({ formData, handleInputChange }: PersonalDetailsFormProps) => {
-  return (
-    <div className="space-y-6">
-      <h3 className="text-xl font-semibold text-gray-900">Personal Details</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-          <input
-            type="text"
-            id="fullName"
-            name="fullName"
-            value={formData.fullName}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            placeholder="Enter your full name"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            placeholder="Enter your email"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            placeholder="Enter your phone number"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="dob" className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-          <input
-            type="date"
-            id="dob"
-            name="dob"
-            value={formData.dob}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            required
-          />
-        </div>
-        <div className="md:col-span-2">
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-          <textarea
-            id="address"
-            name="address"
-            value={formData.address}
-            onChange={handleInputChange}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-            placeholder="Enter your address"
-            required
-          />
-        </div>
-      </div>
+const PersonalDetailsForm: React.FC<PersonalDetailsFormProps> = ({ formData, handleInputChange }) => (
+  <div>
+    <div className="mb-4">
+      <label className="block mb-1 font-medium">Full Name</label>
+      <input
+        type="text"
+        name="fullName"
+        value={formData.fullName}
+        onChange={handleInputChange}
+        className="w-full p-2 border rounded"
+        required
+      />
     </div>
-  );
-};
+    <div className="mb-4">
+      <label className="block mb-1 font-medium">Email</label>
+      <input
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleInputChange}
+        className="w-full p-2 border rounded"
+        required
+      />
+    </div>
+    <div className="mb-4">
+      <label className="block mb-1 font-medium">Phone</label>
+      <input
+        type="tel"
+        name="phone"
+        value={formData.phone}
+        onChange={handleInputChange}
+        className="w-full p-2 border rounded"
+        required
+      />
+    </div>
+    <div className="mb-4">
+      <label className="block mb-1 font-medium">Date of Birth</label>
+      <input
+        type="date"
+        name="dateOfBirth"
+        value={formData.dateOfBirth}
+        onChange={handleInputChange}
+        className="w-full p-2 border rounded"
+        required
+      />
+    </div>
+    <div className="mb-4">
+      <label className="block mb-1 font-medium">Address</label>
+      <textarea
+        name="address"
+        value={formData.address}
+        onChange={handleInputChange}
+        className="w-full p-2 border rounded"
+        required
+      />
+    </div>
+    <div className="mb-4">
+      <label className="block mb-1 font-medium">PAN Number</label>
+      <input
+        type="text"
+        name="panNumber"
+        value={formData.panNumber}
+        onChange={handleInputChange}
+        className="w-full p-2 border rounded"
+        required
+      />
+    </div>
+    <div className="mb-4">
+      <label className="block mb-1 font-medium">Aadhaar Number</label>
+      <input
+        type="text"
+        name="aadhaarNumber"
+        value={formData.aadhaarNumber}
+        onChange={handleInputChange}
+        className="w-full p-2 border rounded"
+        required
+      />
+    </div>
+  </div>
+);
 
 export default PersonalDetailsForm;
